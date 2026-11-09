@@ -1,0 +1,1 @@
+These files are copied unmodified from [ContextBench](https://github.com/RulinShao/ContextBench) at commit `fb533c18c78a82d3f1b2047a9c1700735cf829ae` (Apache-2.0, see `LICENSE`): `skills/` from `clm_exp/skills/` and `paper.yaml` from `clm_exp/configs/`. They live outside the installed `contextbench` package, so they are vendored here.

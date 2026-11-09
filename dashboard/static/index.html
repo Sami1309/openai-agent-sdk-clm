@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLM Agents</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #6f6d67;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,.12); --wash: #f0efec;
+  --clm: #2a78d6; --base: #eb6834; --summary: #1baf7a;
+  --critical: #d03b3b; --warning: #fab219; --good: #006300;
+  --new: rgba(42,120,214,.09);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #9b9a93;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.12); --wash: #262624;
+    --clm: #3987e5; --base: #d95926; --summary: #199e70; --good: #0ca30c;
+    --new: rgba(57,135,229,.16);
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1120px; margin: 0 auto; padding: 40px 24px 96px; }
+h1 { font-size: 30px; line-height: 1.2; margin: 0 0 10px; font-weight: 650; letter-spacing: -.015em; }
+h2 { font-size: 20px; margin: 56px 0 6px; font-weight: 650; }
+h3 { font-size: 15px; margin: 0 0 4px; font-weight: 650; }
+p { margin: 0 0 12px; }
+.lede { font-size: 17px; color: var(--ink2); max-width: 74ch; }
+.sub { color: var(--ink2); max-width: 74ch; margin-bottom: 18px; }
+.muted { color: var(--muted); font-size: 13px; }
+code, pre { font-family: var(--mono); font-size: 12.5px; }
+code { background: var(--wash); padding: 1px 5px; border-radius: 4px; }
+pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 18px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.cols3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.eq { font-family: var(--mono); font-size: 16px; margin: 6px 0 10px; }
+.steps { list-style: none; counter-reset: s; padding: 0; margin: 14px 0 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.steps li { counter-increment: s; }
+.steps li::before { content: counter(s); display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--clm); color: #fff; font-size: 12px; font-weight: 650; margin-bottom: 8px; }
+.steps p { color: var(--ink2); font-size: 14px; margin: 0; }
+.filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 14px; }
+label.f { display: grid; gap: 3px; font-size: 12px; color: var(--ink2); }
+select, button { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--axis); border-radius: 6px; padding: 5px 9px; }
+select { max-width: 100%; }
+button { cursor: pointer; }
+button:hover { background: var(--wash); }
+button[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+:focus-visible { outline: 2px solid var(--clm); outline-offset: 1px; }
+.banner { display: flex; gap: 10px; align-items: baseline; border: 1px solid var(--warning); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 14px; background: var(--surface); }
+.banner b { white-space: nowrap; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--ink2); margin-bottom: 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.key { display: inline-block; width: 16px; height: 2px; border-radius: 1px; }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { font: 12px system-ui, sans-serif; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.chart text.lab { fill: var(--ink2); }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 12.5px; box-shadow: 0 2px 8px rgba(0,0,0,.14); white-space: nowrap; z-index: 2; }
+.tip div { display: flex; align-items: center; gap: 6px; color: var(--ink2); }
+.tip b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.tip .t { color: var(--muted); margin-bottom: 3px; }
+.inspect-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 18px 0 10px; }
+.inspect-bar input[type=range] { flex: 1 1 200px; min-width: 120px; accent-color: var(--clm); }
+.seg { display: inline-flex; gap: 4px; }
+.narr { border-left: 3px solid var(--axis); padding: 2px 0 2px 12px; margin: 10px 0 14px; }
+.narr.edit { border-left-color: var(--clm); }
+.narr.bad { border-left-color: var(--critical); }
+.narr pre { margin-top: 6px; color: var(--ink2); max-height: 150px; overflow: auto; }
+.tiles { display: flex; flex-wrap: wrap; gap: 28px; margin-bottom: 14px; }
+.tile .v { font-size: 21px; font-weight: 600; line-height: 1.2; }
+.tile .l { font-size: 12.5px; color: var(--ink2); }
+.pane { max-height: 480px; overflow: auto; }
+.pane h3 { position: sticky; top: -18px; background: var(--surface); padding: 2px 0 8px; margin-top: -2px; z-index: 1; }
+.msg { border-top: 1px solid var(--grid); padding: 8px 6px; }
+.msg.new { background: var(--new); }
+.msg header { display: flex; gap: 8px; align-items: baseline; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+.msg header b { color: var(--ink); font-weight: 600; }
+.msg pre { max-height: 8.5em; overflow: auto; color: var(--ink2); }
+.gone { font-size: 13px; color: var(--ink2); padding: 0 6px 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; font-weight: 600; color: var(--ink2); }
+th, td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--grid); vertical-align: top; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tw { overflow-x: auto; }
+details > summary { cursor: pointer; color: var(--ink2); font-size: 13.5px; margin-top: 10px; }
+.empty { text-align: center; padding: 36px 16px; color: var(--ink2); }
+.empty pre { display: inline-block; text-align: left; background: var(--wash); padding: 10px 14px; border-radius: 6px; margin-top: 10px; }
+.code { background: var(--wash); border-radius: 6px; padding: 12px 14px; overflow-x: auto; }
+.code pre { white-space: pre; }
+.stack { display: grid; gap: 12px; }
+.mt { margin-top: 14px; }
+@media (max-width: 800px) {
+  main { padding: 28px 16px 72px; }
+  .cols, .cols3 { grid-template-columns: 1fr; }
+  .steps { grid-template-columns: 1fr 1fr; }
+  h1 { font-size: 25px; }
+}
+@media (max-width: 460px) { .steps { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>An Agents SDK agent that manages its own context</h1>
+<p class="lede">A minimal implementation of <a href="https://arxiv.org/abs/2609.37725">Context Language Models</a> on the OpenAI Agents SDK. The agent's live context is a file. The agent edits that file with ordinary tools, and its next model call sends whatever the file now says.</p>
+
+<h2>How it works</h2>
+<p class="sub">The only thing that changes is who decides what the model sees next.</p>
+<div class="cols">
+  <div class="card">
+    <h3>SDK default</h3>
+    <div class="eq">c<sub>t+1</sub> = c<sub>t</sub> ⊕ f(c<sub>t</sub>)</div>
+    <p class="muted" style="margin:0">The runner appends every item to the input. Context only grows until a harness intervenes or the limit is reached.</p>
+  </div>
+  <div class="card">
+    <h3><code>CLMAgent</code></h3>
+    <div class="eq">c<sub>t+1</sub> = f(c<sub>t</sub>)</div>
+    <p class="muted" style="margin:0">The agent decides. It can delete, rewrite, summarize, or move anything out to storage, using any strategy it can express in code.</p>
+  </div>
+</div>
+<ol class="steps card mt">
+  <li><h3>Mirror</h3><p>Before each model call, the turns are written to <code>LIVE_CTX_MAIN.txt</code>.</p></li>
+  <li><h3>Act</h3><p>The agent runs <code>bash</code> like any other tool call, and may rewrite that file.</p></li>
+  <li><h3>Sync</h3><p><code>call_model_input_filter</code> reads the file back and re-pins the original task. New turns are appended.</p></li>
+  <li><h3>Send</h3><p>The next request is built from the file, not from the runner's append-only list.</p></li>
+</ol>
+
+<h2>Watch it work</h2>
+<p class="sub">Replay a run one model call at a time. Each method gets the same task, tools, and token limit.</p>
+<div id="source-banner"></div>
+<div class="filters">
+  <label class="f">Run<select id="f-run"></select></label>
+  <label class="f">Task<select id="f-task"></select></label>
+  <label class="f">Input pressure<select id="f-pressure"></select></label>
+  <label class="f">Seed<select id="f-seed"></select></label>
+</div>
+<div class="card">
+  <h3>Context size at each model call</h3>
+  <div class="legend" id="trace-legend"></div>
+  <div class="chart" id="trace-chart"></div>
+  <div class="muted" id="trace-note"></div>
+  <details><summary>View as table</summary><div class="tw" id="trace-table"></div></details>
+
+  <div class="inspect-bar">
+    <div class="seg" id="method-seg" role="group" aria-label="Method"></div>
+    <button id="prev" aria-label="Previous model call">◀</button>
+    <input id="step" type="range" min="0" max="0" value="0" aria-label="Model call">
+    <button id="next" aria-label="Next model call">▶</button>
+    <span class="muted" id="step-label"></span>
+  </div>
+  <div id="narr" class="narr"></div>
+  <div class="tiles" id="tiles"></div>
+  <div class="cols">
+    <div class="card pane" id="pane-input"></div>
+    <div class="card pane" id="pane-file"></div>
+  </div>
+</div>
+
+<h2>Benchmarks</h2>
+<p class="sub">The paper's <a href="https://github.com/RulinShao/ContextBench">ContextBench</a>: its official task generators, graders, level definitions, and method skills, at the paper's 32K context limit. Each task needs no reasoning or knowledge beyond following the instruction, so failures reflect context management.</p>
+<div class="cols">
+  <div class="card"><h3>Needle retention</h3><p class="muted" style="margin:0">Selective retention. Keep a few lines verbatim while discarding filler. Graded on the final context.</p></div>
+  <div class="card"><h3>Sudoku sketchpad</h3><p class="muted" style="margin:0">In-place edits. Keep a 16×16 board current through a stream of moves. Each version must be exact.</p></div>
+  <div class="card"><h3>KV store</h3><p class="muted" style="margin:0">Offload and retrieve. Evict batches of records, then answer exact lookups from any earlier batch.</p></div>
+  <div class="card"><h3>Log triage</h3><p class="muted" style="margin:0">Offload and retrieve. Move batches of logs to disk, then answer exact lookup and count queries.</p></div>
+</div>
+<div class="card mt tw">
+  <table>
+    <tr><th>Method</th><th>What decides the context</th></tr>
+    <tr><td><span class="key" style="background:var(--base)"></span> Base</td><td>Nothing. The SDK's default append-only behavior.</td></tr>
+    <tr><td><span class="key" style="background:var(--summary)"></span> Summary</td><td>A fixed harness policy: at 75% of the budget, replace the conversation with a Codex-style handoff summary.</td></tr>
+    <tr><td><span class="key" style="background:var(--clm)"></span> CLM</td><td>The agent, by editing its context file.</td></tr>
+  </table>
+</div>
+<p class="muted mt">Effective means a higher score at high pressure (input ÷ budget) without more compute. Paper Figure 2 reports CLM near 100% at every pressure while the baselines fall away. Compute is prefix-reuse cost (paper Eq. 3): prompt tokens that fall after the first edit have to be reprocessed.</p>
+<div id="results"></div>
+
+<h2>Run it</h2>
+<div class="stack">
+  <div class="code"><pre># Install and test, no API key needed
+uv sync
+uv run python -m pytest
+
+# Offline demo: a scripted fake model drives the real SDK loop
+uv run python -m benchmarks.run --scripted
+
+# Real benchmark
+export OPENAI_API_KEY=sk-...
+uv run python -m benchmarks.run --profile pilot                  # 12 runs, about $9
+uv run python -m benchmarks.run --profile figure2 --max-usd 25   # the Figure 2 ladder
+
+# This dashboard (refreshes while a benchmark runs)
+uv run python -m dashboard</pre></div>
+  <div class="code"><pre>from agents_clm import CLMAgent, CLMRunner, ContextSettings
+
+agent = CLMAgent(
+    name="Researcher",
+    instructions="...",
+    tools=[...],
+    context_settings=ContextSettings(budget=32_768),
+)
+result = await CLMRunner.run(agent, "Your task", max_turns=100)
+
+print(await agent.live.read())     # the context file as the agent left it
+print(agent.live.trace.summary())  # peak context, prefix reuse, reference cost</pre></div>
+</div>
+</main>
+
+<script>
+const METHODS = ["clm", "base", "summary"];
+const LABEL = { clm: "CLM", base: "Base", summary: "Summary" };
+const TASK_LABEL = { needle_retention: "Needle retention", sudoku_sketchpad: "Sudoku sketchpad", kv_store: "KV store", log_triage: "Log triage" };
+const COLOR = { clm: "var(--clm)", base: "var(--base)", summary: "var(--summary)" };
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => Math.round(n).toLocaleString("en-US");
+const NS = "http://www.w3.org/2000/svg";
+const state = { runs: [], run: null, task: null, pressure: null, seed: null, traces: {}, method: "clm", step: 0, loadKey: "" };
+
+function el(tag, attrs = {}, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v; else if (k === "style") node.style.cssText = v; else node.setAttribute(k, v);
+  }
+  for (const kid of kids) node.append(kid);
+  return node;
+}
+function svg(tag, attrs = {}, text) {
+  const node = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function setOptions(select, values, labelOf, current) {
+  const key = JSON.stringify(values);
+  if (select.dataset.key !== key) {
+    select.replaceChildren(...values.map((v) => el("option", { value: v }, labelOf(v))));
+    select.dataset.key = key;
+  }
+  select.value = current;
+}
+const uniq = (xs) => [...new Set(xs)];
+const currentRun = () => state.runs.find((r) => r.run_id === state.run);
+const niceTop = (v) => { const p = 10 ** Math.floor(Math.log10(v || 1)); for (const m of [1, 1.5, 2, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p; return 10 * p; };
+
+async function refresh() {
+  const runs = await (await fetch("/api/runs")).json();
+  state.runs = runs.filter((r) => r.results.length);
+  if (!state.runs.find((r) => r.run_id === state.run)) {
+    state.run = (state.runs.find((r) => r.source === "live") || state.runs[0] || {}).run_id || null;
+  }
+  renderFilters();
+  renderResults();
+  await loadTraces();
+}
+
+function renderFilters() {
+  const run = currentRun();
+  setOptions($("f-run"), state.runs.map((r) => r.run_id), (id) => {
+    const r = state.runs.find((x) => x.run_id === id);
+    return `${id} (${r.source === "live" ? r.model : "scripted model"})`;
+  }, state.run);
+  $("source-banner").replaceChildren();
+  if (!run) {
+    $("source-banner").append(el("div", { class: "card empty" }, "No runs yet. Run a benchmark, and it will appear here."));
+    return;
+  }
+  if (run.source === "scripted") {
+    $("source-banner").append(el("div", { class: "banner" },
+      el("b", {}, "⚠ Scripted model"),
+      el("span", {}, "This replay uses a fake model with a hard-coded strategy, through the real SDK loop and a real shell. It shows the mechanics. It says nothing about how well a real model manages context.")));
+  }
+  const tasks = uniq(run.results.map((r) => r.task));
+  if (!tasks.includes(state.task)) state.task = tasks[0];
+  const inTask = run.results.filter((r) => r.task === state.task);
+  const pressures = uniq(inTask.map((r) => r.pressure)).sort((a, b) => a - b);
+  if (!pressures.includes(state.pressure)) {
+    const valid = pressures.filter((p) => inTask.some((r) => r.pressure === p && r.method === "clm" && r.score !== null));
+    state.pressure = valid.length ? valid[valid.length - 1] : pressures[pressures.length - 1];
+  }
+  const seeds = uniq(inTask.filter((r) => r.pressure === state.pressure).map((r) => r.seed)).sort();
+  if (!seeds.includes(state.seed)) state.seed = seeds[0];
+  setOptions($("f-task"), tasks, (t) => TASK_LABEL[t] || t, state.task);
+  setOptions($("f-pressure"), pressures, (p) => `${p}× budget`, state.pressure);
+  setOptions($("f-seed"), seeds, String, state.seed);
+}
+
+async function loadTraces() {
+  const run = currentRun();
+  if (!run) return;
+  const rows = run.results.filter((r) => r.task === state.task && r.pressure === state.pressure && r.seed === state.seed);
+  const key = run.run_id + "|" + rows.map((r) => r.trace_file).sort().join(",");
+  if (key === state.loadKey) return;
+  state.loadKey = key;
+  const traces = {};
+  await Promise.all(rows.map(async (r) => {
+    const data = await (await fetch(`/api/trace?run=${encodeURIComponent(run.run_id)}&file=${encodeURIComponent(r.trace_file)}`)).json();
+    traces[r.method] = { ...data, record: r };
+  }));
+  if (key !== state.loadKey) return;
+  state.traces = traces;
+  if (!traces[state.method]) state.method = METHODS.find((m) => traces[m]) || "clm";
+  state.step = firstInterestingStep(state.method);
+  renderTrace();
+}
+
+function firstInterestingStep(method) {
+  const steps = state.traces[method]?.trace.steps || [];
+  const edit = steps.find((s) => s.edit);
+  return edit ? edit.step : Math.max(0, steps.length - 1);
+}
+
+function series() {
+  return METHODS.filter((m) => state.traces[m]).map((m) => ({
+    method: m,
+    points: state.traces[m].trace.steps.filter((s) => s.kind !== "compaction").map((s) => ({ x: s.step, y: s.tokens, over: s.kind === "over_budget" })),
+  }));
+}
+
+function renderTrace() {
+  const run = currentRun();
+  if (!run) return;
+  const all = series();
+  $("trace-legend").replaceChildren(...all.map((s) => el("span", {}, el("i", { class: "key", style: `background:${COLOR[s.method]}` }), LABEL[s.method])),
+    el("span", {}, el("i", { class: "key", style: "background:var(--critical)" }), "Context limit"));
+  const unfinished = METHODS.filter((m) => state.traces[m]?.record.score === null).map((m) => LABEL[m]);
+  $("trace-note").textContent = unfinished.length ? `⚠ ${unfinished.join(" and ")} did not finish this level, so the line stops early and has no score.` : "";
+  drawTraceChart(all, run);
+  drawTraceTable(all);
+  $("method-seg").replaceChildren(...METHODS.filter((m) => state.traces[m]).map((m) => {
+    const b = el("button", { "aria-pressed": String(m === state.method) }, LABEL[m]);
+    b.onclick = () => { state.method = m; state.step = firstInterestingStep(m); renderTrace(); };
+    return b;
+  }));
+  const steps = state.traces[state.method]?.trace.steps || [];
+  const slider = $("step");
+  slider.max = Math.max(0, steps.length - 1);
+  slider.value = state.step;
+  $("step-label").textContent = `Model call ${state.step + 1} of ${steps.length}`;
+  renderInspector();
+}
+
+function drawTraceChart(all, run) {
+  const host = $("trace-chart");
+  const W = Math.max(320, host.clientWidth || 800), H = 260, m = { l: 46, r: 16, t: 12, b: 30 };
+  const limit = run.budget - Math.floor(run.budget / 16);
+  const xs = all.flatMap((s) => s.points.map((p) => p.x));
+  const xMax = Math.max(1, ...xs);
+  const yTop = niceTop(Math.max(limit, ...all.flatMap((s) => s.points.map((p) => p.y))) * 1.04);
+  const X = (v) => m.l + (v / xMax) * (W - m.l - m.r);
+  const Y = (v) => H - m.b - (v / yTop) * (H - m.t - m.b);
+  const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Context tokens at each model call, by method" });
+  for (let i = 0; i <= 4; i++) {
+    const v = (yTop / 4) * i;
+    root.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: i ? "var(--grid)" : "var(--axis)", "stroke-width": 1 }));
+    root.append(svg("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end" }, fmt(v)));
+  }
+  const ticks = Math.min(8, xMax);
+  for (let i = 0; i <= ticks; i++) {
+    const v = Math.round((xMax / ticks) * i);
+    root.append(svg("text", { x: X(v), y: H - 10, "text-anchor": "middle" }, String(v + 1)));
+  }
+  root.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(limit), y2: Y(limit), stroke: "var(--critical)", "stroke-width": 1 }));
+  root.append(svg("text", { x: W - m.r, y: Y(limit) - 6, "text-anchor": "end", class: "lab" }, `Limit ${fmt(limit)}`));
+  for (const s of all) {
+    root.append(svg("polyline", { points: s.points.map((p) => `${X(p.x)},${Y(p.y)}`).join(" "), fill: "none", stroke: COLOR[s.method], "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    const last = s.points[s.points.length - 1];
+    if (last) {
+      root.append(svg("circle", { cx: X(last.x), cy: Y(last.y), r: 4, fill: last.over ? "var(--critical)" : COLOR[s.method], stroke: "var(--surface)", "stroke-width": 2 }));
+      if (last.over) {
+        const right = X(last.x) > W - 110;
+        root.append(svg("text", { x: X(last.x) + (right ? -9 : 9), y: Y(last.y) - 7, "text-anchor": right ? "end" : "start", class: "lab" }, `✕ ${LABEL[s.method]} hit the limit`));
+      }
+    }
+  }
+  const sel = state.traces[state.method]?.trace.steps[state.step];
+  if (sel && sel.kind !== "compaction") {
+    root.append(svg("line", { x1: X(sel.step), x2: X(sel.step), y1: m.t, y2: H - m.b, stroke: "var(--axis)", "stroke-width": 1 }));
+    root.append(svg("circle", { cx: X(sel.step), cy: Y(sel.tokens), r: 5, fill: COLOR[state.method], stroke: "var(--surface)", "stroke-width": 2 }));
+  }
+  const cross = svg("line", { y1: m.t, y2: H - m.b, stroke: "var(--axis)", "stroke-width": 1, visibility: "hidden" });
+  root.append(cross);
+  const hit = svg("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent", style: "cursor:pointer" });
+  root.append(hit);
+  const tip = el("div", { class: "tip", style: "display:none" });
+  const nearestX = (evt) => {
+    const box = root.getBoundingClientRect();
+    const px = ((evt.clientX - box.left) / box.width) * W;
+    return Math.max(0, Math.min(xMax, Math.round(((px - m.l) / (W - m.l - m.r)) * xMax)));
+  };
+  hit.addEventListener("pointermove", (evt) => {
+    const x = nearestX(evt);
+    cross.setAttribute("x1", X(x)); cross.setAttribute("x2", X(x)); cross.setAttribute("visibility", "visible");
+    const rows = all.flatMap((s) => {
+      const p = s.points.find((q) => q.x === x);
+      if (!p) return [];
+      return [el("div", {}, el("i", { class: "key", style: `background:${COLOR[s.method]}` }), el("b", {}, fmt(p.y)), LABEL[s.method] + (p.over ? " (over limit)" : ""))];
+    });
+    tip.replaceChildren(el("div", { class: "t" }, `Model call ${x + 1}`), ...(rows.length ? rows : [el("div", {}, "No call at this point")]));
+    tip.style.display = "block";
+    const left = (X(x) / W) * host.clientWidth;
+    tip.style.left = `${left + (left > host.clientWidth - 170 ? -160 : 12)}px`;
+    tip.style.top = "8px";
+  });
+  hit.addEventListener("pointerleave", () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); });
+  hit.addEventListener("click", (evt) => {
+    const steps = state.traces[state.method].trace.steps;
+    const x = nearestX(evt);
+    state.step = Math.min(steps.length - 1, x);
+    renderTrace();
+  });
+  host.replaceChildren(root, tip);
+}
+
+function drawTraceTable(all) {
+  const xs = uniq(all.flatMap((s) => s.points.map((p) => p.x))).sort((a, b) => a - b);
+  const head = el("tr", {}, el("th", { class: "n" }, "Model call"), ...all.map((s) => el("th", { class: "n" }, LABEL[s.method])));
+  const rows = xs.map((x) => el("tr", {}, el("td", { class: "n" }, String(x + 1)), ...all.map((s) => {
+    const p = s.points.find((q) => q.x === x);
+    return el("td", { class: "n" }, p ? fmt(p.y) + (p.over ? " ✕" : "") : "");
+  })));
+  $("trace-table").replaceChildren(el("table", {}, head, ...rows));
+}
+
+function parseCommand(text) {
+  const m = text.match(/^bash\s+(\{[\s\S]*\})$/);
+  if (!m) return null;
+  try { return JSON.parse(m[1]).command; } catch { return null; }
+}
+
+function renderInspector() {
+  const data = state.traces[state.method];
+  if (!data) return;
+  const { steps, texts } = data.trace;
+  const s = steps[state.step];
+  if (!s) return;
+  const prev = state.step > 0 ? steps[state.step - 1] : null;
+  const limit = currentRun().budget - Math.floor(currentRun().budget / 16);
+  const narr = $("narr");
+  narr.className = "narr";
+  const lines = [];
+  let body = "";
+  if (s.kind === "over_budget") {
+    narr.classList.add("bad");
+    body = `✕ This call needed ${fmt(s.tokens)} tokens, over the ${fmt(limit)}-token limit, so the run ended here.`;
+  } else if (s.kind === "compaction") {
+    body = "The harness asked a summarizer to compress the whole conversation. The agent had no say in when or how.";
+  } else if (s.edit?.status === "applied") {
+    narr.classList.add("edit");
+    body = `The agent edited its own context. The file went from ${fmt(s.edit.before)} to ${fmt(s.edit.after)} tokens, then the newest turns were appended.`;
+    const assistants = s.messages.filter((m) => m.role === "assistant");
+    const last = assistants[assistants.length - 1];
+    const command = last ? parseCommand(texts[last.key]) : null;
+    if (command) lines.push(el("pre", {}, command));
+  } else if (s.edit?.status === "rejected") {
+    narr.classList.add("bad");
+    body = `An edit was rejected because it would have grown the context from ${fmt(s.edit.before)} to ${fmt(s.edit.after)} tokens, past the limit.`;
+  } else if (s.edit?.status === "compacted") {
+    narr.classList.add("edit");
+    body = "The conversation was replaced by a summary at 75% of the budget, as the fixed policy dictates.";
+  } else if (state.step === 0) {
+    body = "First call: the system prompt and the task.";
+  } else {
+    body = "No edit. New turns were appended, the same as the SDK's default.";
+  }
+  narr.replaceChildren(el("div", {}, body), ...lines);
+
+  const reused = s.reused, prefill = s.tokens - s.reused;
+  const tile = (v, l) => el("div", { class: "tile" }, el("div", { class: "v" }, v), el("div", { class: "l" }, l));
+  $("tiles").replaceChildren(
+    tile(fmt(s.tokens), "Tokens in this prompt"),
+    tile(fmt(reused), "Reused from an earlier prefix"),
+    tile(fmt(prefill), "Must be reprocessed"),
+    tile(String(s.messages.length), "Messages sent"));
+
+  const prevKeys = new Set((prev?.messages || []).map((m) => m.key));
+  const nowKeys = new Set(s.messages.map((m) => m.key));
+  const gone = (prev?.messages || []).filter((m) => !nowKeys.has(m.key));
+  const goneTokens = gone.reduce((a, m) => a + m.tokens, 0);
+  const pane = $("pane-input");
+  pane.replaceChildren(el("h3", {}, "What the model received"));
+  if (gone.length) pane.append(el("div", { class: "gone" }, `${gone.length} message${gone.length > 1 ? "s" : ""} left the context since the last call (−${fmt(goneTokens)} tokens).`));
+  s.messages.forEach((m, i) => {
+    const isNew = prev && !prevKeys.has(m.key);
+    pane.append(el("div", { class: "msg" + (isNew ? " new" : "") },
+      el("header", {}, el("b", {}, i === 0 ? "system" : m.role), `${fmt(m.tokens)} tokens`, isNew ? "· new" : ""),
+      el("pre", {}, texts[m.key])));
+  });
+
+  const file = $("pane-file");
+  file.replaceChildren(el("h3", {}, "LIVE_CTX_MAIN.txt"));
+  if (state.method === "clm") {
+    file.append(el("pre", {}, s.file ?? "(no file was written for this call)"));
+  } else {
+    file.append(el("p", { class: "muted" }, state.method === "base"
+      ? "The SDK default has no context file. Everything the agent has seen is re-sent on every call."
+      : "This method has no context file. The harness alone decides when to compress."));
+  }
+}
+
+function mean(xs) { return xs.reduce((a, b) => a + b, 0) / xs.length; }
+
+function renderResults() {
+  const host = $("results");
+  const live = state.runs.filter((r) => r.source === "live");
+  const run = currentRun();
+  if (!run || run.source !== "live") {
+    host.replaceChildren(el("div", { class: "card empty mt" },
+      el("h3", {}, live.length ? "Select a live run to see its results" : "No live results yet"),
+      el("div", {}, "Scripted runs are excluded because a hard-coded strategy can't measure effectiveness."),
+      live.length ? "" : el("pre", {}, "export OPENAI_API_KEY=sk-...\nuv run python -m benchmarks.run --profile pilot")));
+    return;
+  }
+  const scored = run.results.filter((r) => r.score !== null);
+  const errors = run.results.length - scored.length;
+  const tasks = uniq(scored.map((r) => r.task));
+  const methods = METHODS.filter((m) => scored.some((r) => r.method === m));
+  const legend = () => el("div", { class: "legend" }, ...methods.map((m) => el("span", {}, el("i", { class: "key", style: `background:${COLOR[m]}` }), LABEL[m])));
+  const wrap = el("div", { class: "mt stack" });
+  const progress = run.results.length < run.planned ? ` ${run.results.length} of ${run.planned} runs finished so far.` : "";
+  wrap.append(el("div", { class: "muted" }, `${run.run_id}: ${run.model}, ${run.budget.toLocaleString("en-US")}-token budget, about $${run.estimated_usd} in API calls.${progress}${errors ? ` ${errors} of ${run.results.length} runs have no valid score, for example because of an API error, and are excluded.` : ""}`));
+
+  const panel = (title, note, pointFor, fmtTick, yMaxFor) => {
+    const card = el("div", { class: "card" }, el("h3", {}, title), el("div", { class: "muted", style: "margin-bottom:6px" }, note), legend());
+    const grid = el("div", { class: "cols" });
+    for (const task of tasks) {
+      const box = el("div", {}, el("div", { style: "font-size:13px;color:var(--ink2)" }, TASK_LABEL[task] || task));
+      const chart = el("div", { class: "chart" });
+      box.append(chart);
+      grid.append(box);
+      requestAnimationFrame(() => drawSmall(chart, scored.filter((r) => r.task === task), methods, pointFor, fmtTick, yMaxFor));
+    }
+    card.append(grid);
+    return card;
+  };
+  wrap.append(panel("Score against input pressure", "Mean over seeds. Higher is better. Pressure is total input ÷ context budget.",
+    (rows) => mean(rows.map((r) => r.score)), (v) => `${Math.round(v * 100)}%`, () => 1));
+  wrap.append(panel("Compute for runs that finished", "Reference PFLOPs (paper Eq. 9 on Qwen3.6-27B constants) from each run's token trace. Lower is better. Runs that hit the limit are left out, because stopping early looks cheap.",
+    (rows) => { const done = rows.filter((r) => r.terminated === "stream_exhausted"); return done.length ? mean(done.map((r) => r.reference_pflops)) : null; },
+    (v) => v.toFixed(v < 1 ? 2 : 1), null));
+
+  const groups = {};
+  for (const r of scored) (groups[`${r.task}|${r.pressure}|${r.method}`] ||= []).push(r);
+  const order = Object.values(groups).sort((a, b) => a[0].task.localeCompare(b[0].task) || a[0].pressure - b[0].pressure || METHODS.indexOf(a[0].method) - METHODS.indexOf(b[0].method));
+  const head = el("tr", {}, ...["Task", "Level", "Pressure", "Method"].map((t) => el("th", {}, t)),
+    ...["Score", "Finished", "Peak context", "Model calls", "Reprocessed tokens", "PFLOPs", "Est. cost"].map((t) => el("th", { class: "n" }, t)));
+  const rows = order.map((g) => el("tr", {}, el("td", {}, TASK_LABEL[g[0].task] || g[0].task), el("td", {}, g[0].level || ""), el("td", {}, `${g[0].pressure}×`), el("td", {}, LABEL[g[0].method]),
+    el("td", { class: "n" }, `${Math.round(mean(g.map((r) => r.score)) * 100)}%`),
+    el("td", { class: "n" }, `${g.filter((r) => r.terminated === "stream_exhausted").length}/${g.length}`),
+    ...["peak_context", "model_calls", "prefilled_tokens"].map((k) => el("td", { class: "n" }, fmt(mean(g.map((r) => r[k]))))),
+    el("td", { class: "n" }, mean(g.map((r) => r.reference_pflops)).toFixed(2)),
+    el("td", { class: "n" }, g[0].usd == null ? "" : `$${mean(g.map((r) => r.usd)).toFixed(2)}`)));
+  wrap.append(el("div", { class: "card" }, el("h3", {}, "All results"), el("div", { class: "tw" }, el("table", {}, head, ...rows))));
+  host.replaceChildren(wrap);
+}
+
+function drawSmall(host, rows, methods, pointFor, fmtTick, yMaxFor) {
+  const W = Math.max(220, host.clientWidth || 300), H = 190, m = { l: 42, r: 12, t: 10, b: 26 };
+  const pressures = uniq(rows.map((r) => r.pressure)).sort((a, b) => a - b);
+  const X = (i) => m.l + (pressures.length > 1 ? (i / (pressures.length - 1)) * (W - m.l - m.r) : (W - m.l - m.r) / 2);
+  const data = methods.map((method) => ({ method, pts: pressures.map((p, i) => {
+    const subset = rows.filter((r) => r.method === method && r.pressure === p);
+    return { i, p, v: subset.length ? pointFor(subset) : null };
+  }) }));
+  const maxV = yMaxFor ? yMaxFor() : niceTop(Math.max(...data.flatMap((d) => d.pts.map((p) => p.v ?? 0)), 0.01));
+  const Y = (v) => H - m.b - (v / maxV) * (H - m.t - m.b);
+  const root = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Values by method and input pressure" });
+  for (let i = 0; i <= 4; i++) {
+    const v = (maxV / 4) * i;
+    root.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: i ? "var(--grid)" : "var(--axis)", "stroke-width": 1 }));
+    root.append(svg("text", { x: m.l - 7, y: Y(v) + 4, "text-anchor": "end" }, fmtTick(v)));
+  }
+  pressures.forEach((p, i) => root.append(svg("text", { x: X(i), y: H - 8, "text-anchor": "middle" }, `${p}×`)));
+  for (const d of data) {
+    const pts = d.pts.filter((p) => p.v !== null);
+    root.append(svg("polyline", { points: pts.map((p) => `${X(p.i)},${Y(p.v)}`).join(" "), fill: "none", stroke: COLOR[d.method], "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    for (const p of pts) root.append(svg("circle", { cx: X(p.i), cy: Y(p.v), r: 4, fill: COLOR[d.method], stroke: "var(--surface)", "stroke-width": 2 }));
+  }
+  const tip = el("div", { class: "tip", style: "display:none" });
+  const hit = svg("rect", { x: 0, y: 0, width: W, height: H, fill: "transparent" });
+  root.append(hit);
+  hit.addEventListener("pointermove", (evt) => {
+    const box = root.getBoundingClientRect();
+    const px = ((evt.clientX - box.left) / box.width) * W;
+    let best = 0;
+    pressures.forEach((_, i) => { if (Math.abs(X(i) - px) < Math.abs(X(best) - px)) best = i; });
+    const items = data.flatMap((d) => d.pts[best].v === null ? [] : [el("div", {}, el("i", { class: "key", style: `background:${COLOR[d.method]}` }), el("b", {}, fmtTick(d.pts[best].v)), LABEL[d.method])]);
+    tip.replaceChildren(el("div", { class: "t" }, `${pressures[best]}× pressure`), ...items);
+    tip.style.display = "block";
+    const left = (X(best) / W) * host.clientWidth;
+    tip.style.left = `${left + (left > host.clientWidth - 130 ? -130 : 10)}px`;
+    tip.style.top = "6px";
+  });
+  hit.addEventListener("pointerleave", () => { tip.style.display = "none"; });
+  host.replaceChildren(root, tip);
+}
+
+$("f-run").onchange = (e) => { state.run = e.target.value; state.task = null; refresh(); };
+$("f-task").onchange = (e) => { state.task = e.target.value; refresh(); };
+$("f-pressure").onchange = (e) => { state.pressure = Number(e.target.value); refresh(); };
+$("f-seed").onchange = (e) => { state.seed = Number(e.target.value); refresh(); };
+$("step").oninput = (e) => { state.step = Number(e.target.value); renderTrace(); };
+$("prev").onclick = () => { state.step = Math.max(0, state.step - 1); renderTrace(); };
+$("next").onclick = () => { state.step = Math.min(Number($("step").max), state.step + 1); renderTrace(); };
+let resizeTimer;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { renderTrace(); renderResults(); }, 120); });
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

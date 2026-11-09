@@ -1,0 +1,56 @@
+"""``CLMRunner``: run an agent whose context is its own to manage."""
+
+from __future__ import annotations
+
+import asyncio
+from dataclasses import replace
+from typing import Any
+
+from agents import Agent, AgentsException, RunConfig, Runner, UserError
+
+from .agent import CLMAgent
+from .live_context import LiveContext
+
+
+def _live_context(agent: Agent[Any]) -> LiveContext:
+    if isinstance(agent, CLMAgent) and agent.live is not None:
+        return agent.live
+    for capability in getattr(agent, "capabilities", ()):
+        if getattr(capability, "type", None) == "context_file":
+            return capability.live
+    raise UserError("CLMRunner requires a CLMAgent, or a SandboxAgent with the ContextFile capability.")
+
+
+def _configure(live: LiveContext, run_config: RunConfig | None, kwargs: dict[str, Any]) -> RunConfig:
+    for name in ("session", "conversation_id", "previous_response_id", "auto_previous_response_id"):
+        if kwargs.get(name):
+            raise UserError(
+                f"{name} is not supported: it stores the context outside the agent's control. "
+                "Run the same agent again to continue a conversation."
+            )
+    config = run_config or RunConfig()
+    if config.call_model_input_filter is not None:
+        raise UserError("CLMRunner sets call_model_input_filter itself.")
+    live.begin_run()
+    return replace(config, call_model_input_filter=live)
+
+
+class CLMRunner:
+    """Like ``agents.Runner``, for an agent that manages its own context."""
+
+    @staticmethod
+    async def run(agent: Agent[Any], input: Any, *, run_config: RunConfig | None = None, **kwargs: Any) -> Any:
+        live = _live_context(agent)
+        config = _configure(live, run_config, kwargs)
+        try:
+            result = await Runner.run(agent, input, run_config=config, **kwargs)
+        except AgentsException as exc:
+            if exc.run_data is not None:
+                live.trace.attach_usage(exc.run_data.context_wrapper.usage)
+            raise
+        await live.finish(result)
+        return result
+
+    @staticmethod
+    def run_sync(agent: Agent[Any], input: Any, *, run_config: RunConfig | None = None, **kwargs: Any) -> Any:
+        return asyncio.run(CLMRunner.run(agent, input, run_config=run_config, **kwargs))

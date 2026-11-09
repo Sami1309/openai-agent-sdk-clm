@@ -1,0 +1,97 @@
+# ContextBench: the levels, seeds and gate constants of record.
+#
+# Every number here is the resolved configuration the paper ran. Generation reads
+# this file; nothing regenerates a level from a formula.
+#
+# Levels are the rungs plotted in the paper's ContextBench figure, all four families.
+# Per level, only the generator knobs reach the generator. The other keys describe it:
+#   figure_x           the level's x value in the figure's per-seed rows. For kv_store,
+#                      log_triage and needle_retention it is P = streamed op tokens /
+#                      budget; for sudoku_sketchpad it is the number of moves.
+#   appendix_pressure  the appendix pressure table: total input pushed over the episode
+#                      (instruction included; sudoku counts the board once per move)
+#                      / budget. Absent for the rungs the table does not list.
+#   main_figure        true on the rungs drawn in the main-text figure.
+#   regime             "sub-budget" for rungs whose gate pressure is below 1 (the
+#                      feasibility gate's pressure check does not apply there).
+
+context:
+  budget_tokens: 32768
+  reserve_tokens: 2048
+
+feasibility:
+  usable_tokens: 30720          # budget_tokens - reserve_tokens
+  small_op_fraction: 0.2        # 1/5
+  retained_fraction: 0.5        # 1/2
+  safety: 0.9
+  cap_op_tokens: 5529           # int(usable * small_op_fraction * safety)
+  cap_retained_tokens: 13824    # int(usable * retained_fraction * safety)
+  pressure_min: 1.0
+  horizon_min_ops: 4
+  prompt_tokens: 3000           # system prompt + instruction + instance prompt
+
+seeds: [42, 43, 44, 45, 46, 47, 48, 49]
+
+families:
+  kv_store:
+    # Knob: record volume R, written in batches of 100, then the same 24 GETs.
+    fixed:
+      records_per_chunk: 100
+      value_words: 24
+      queries: 24
+    levels:
+      - {name: R130,   records: 130,   figure_x: 0.197, appendix_pressure: 0.27,  main_figure: true, regime: sub-budget}
+      - {name: R260,   records: 260,   figure_x: 0.394, appendix_pressure: 0.46,  main_figure: true, regime: sub-budget}
+      - {name: R520,   records: 520,   figure_x: 0.788, appendix_pressure: 0.85,  main_figure: true, regime: sub-budget}
+      - {name: R1000,  records: 1000,  figure_x: 1.516, appendix_pressure: 1.57,  main_figure: true}
+      - {name: R2000,  records: 2000,  figure_x: 3.011, appendix_pressure: 3.06,  main_figure: true}
+      - {name: R4000,  records: 4000,  figure_x: 5.993, appendix_pressure: 6.04,  main_figure: true}
+      - {name: R8000,  records: 8000,  figure_x: 11.96, appendix_pressure: 12.00, main_figure: true}
+      - {name: R16000, records: 16000, figure_x: 23.88, appendix_pressure: 23.93, main_figure: true}
+
+  log_triage:
+    # Knob: log length L, pushed in batches of lines_per_batch lines, then the same
+    # 24 questions. The batch size is part of each level of record.
+    fixed:
+      queries: 24
+    levels:
+      - {name: L160,   lines: 160,   lines_per_batch: 14, figure_x: 0.215, appendix_pressure: 0.30,  main_figure: true, regime: sub-budget}
+      - {name: L320,   lines: 320,   lines_per_batch: 14, figure_x: 0.43,  appendix_pressure: 0.51,  main_figure: true, regime: sub-budget}
+      - {name: L640,   lines: 640,   lines_per_batch: 14, figure_x: 0.86,  appendix_pressure: 0.93,  main_figure: true, regime: sub-budget}
+      - {name: L1600,  lines: 1600,  lines_per_batch: 14, figure_x: 2.151, appendix_pressure: 2.20,  main_figure: true}
+      - {name: L3200,  lines: 3200,  lines_per_batch: 27, figure_x: 4.071, appendix_pressure: 4.12,  main_figure: true}
+      - {name: L6400,  lines: 6400,  lines_per_batch: 54, figure_x: 7.89}
+      - {name: L12800, lines: 12800, lines_per_batch: 54, figure_x: 15.73, appendix_pressure: 15.77, main_figure: true}
+
+  needle_retention:
+    # Knob: document chunks C (about 4K tokens each), K needles per chunk.
+    fixed:
+      filler_lines_per_chunk: 140
+      words_per_line: 10
+    levels:
+      - {name: K4-C4,   needles_per_chunk: 4, chunks: 4,   figure_x: 0.485,  appendix_pressure: 0.52,  main_figure: true, regime: sub-budget}
+      - {name: K4-C6,   needles_per_chunk: 4, chunks: 6,   figure_x: 0.728,  regime: sub-budget}
+      - {name: K4-C8,   needles_per_chunk: 4, chunks: 8,   figure_x: 0.97,   appendix_pressure: 1.01,  main_figure: true, regime: sub-budget}
+      - {name: K4-C24,  needles_per_chunk: 4, chunks: 24,  figure_x: 2.91,   appendix_pressure: 2.96,  main_figure: true}
+      - {name: K8-C48,  needles_per_chunk: 8, chunks: 48,  figure_x: 5.99,   appendix_pressure: 6.03,  main_figure: true}
+      - {name: K8-C60,  needles_per_chunk: 8, chunks: 60,  figure_x: 7.4875, appendix_pressure: 7.54,  main_figure: true}
+      - {name: K8-C62,  needles_per_chunk: 8, chunks: 62,  figure_x: 7.7371}
+      - {name: K4-C96,  needles_per_chunk: 4, chunks: 96,  figure_x: 11.66,  appendix_pressure: 11.71, main_figure: true}
+      - {name: K2-C192, needles_per_chunk: 2, chunks: 192, figure_x: 23.0,   appendix_pressure: 23.06, main_figure: true}
+      - {name: K2-C224, needles_per_chunk: 2, chunks: 224, figure_x: 26.84,  appendix_pressure: 26.90, main_figure: true}
+
+  sudoku_sketchpad:
+    # Knob: moves T on one 16x16 board (box 4) with 90 givens. The figure's rows call
+    # these levels t4 .. t150 (also box4-g90-t4 .. box4-g90-t150).
+    fixed:
+      box: 4
+      givens: 90
+      boards: 1
+    levels:
+      - {name: t4,   turns: 4,   figure_x: 4,   appendix_pressure: 0.33, main_figure: true, regime: sub-budget}
+      - {name: t8,   turns: 8,   figure_x: 8,   appendix_pressure: 0.53, main_figure: true, regime: sub-budget}
+      - {name: t15,  turns: 15,  figure_x: 15,  appendix_pressure: 0.89, main_figure: true}
+      - {name: t30,  turns: 30,  figure_x: 30,  appendix_pressure: 1.67, main_figure: true}
+      - {name: t60,  turns: 60,  figure_x: 60,  appendix_pressure: 3.23, main_figure: true}
+      - {name: t100, turns: 100, figure_x: 100, appendix_pressure: 5.34, main_figure: true}
+      - {name: t150, turns: 150, figure_x: 150, appendix_pressure: 8.01, main_figure: true}

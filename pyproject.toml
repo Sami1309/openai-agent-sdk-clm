@@ -1,0 +1,33 @@
+[project]
+name = "openai-agents-clm"
+version = "0.1.0"
+description = "Make an OpenAI Agents SDK agent its own Context Language Model (arXiv:2609.37725)."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["openai-agents>=0.24,<0.25", "tiktoken>=0.8"]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-asyncio>=0.24"]
+benchmarks = [
+  "contextbench[tokenizer] @ git+https://github.com/RulinShao/ContextBench@fb533c18c78a82d3f1b2047a9c1700735cf829ae",
+  "pyyaml>=6",
+]
+
+[tool.uv]
+default-groups = ["dev", "benchmarks"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agents_clm"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["."]
