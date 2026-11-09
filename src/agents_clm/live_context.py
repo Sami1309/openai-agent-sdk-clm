@@ -6,14 +6,20 @@ the context, and each model call sends whatever the file now says.
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
-from agents.run_config import ModelInputData
+from agents import UserError
+from agents.run_config import CallModelData, ModelInputData
 
 from .context_file import ContextFileFormat, Item, Turn
+from .checkpoint import MAX_CHECKPOINT_BYTES, decode_checkpoint, encode_checkpoint
 from .context_manager import ContextManager
-from .context_store import ContextStore, file_name
+from .context_store import ContextStore, LocalContextStore, file_name
+from .exceptions import ContextFileTooLarge
 from .settings import ContextSettings
+from .metrics import ContextTrace
 
 
 class LiveContext(ContextManager):
@@ -32,6 +38,18 @@ class LiveContext(ContextManager):
         self.protected: list[Turn] | None = None
         self.turns: list[Turn] = []
         self._written = ""
+        self._agent: Any = None
+        self._last_instructions = ""
+
+    def begin_run(self) -> None:
+        super().begin_run()
+        self._agent = None
+
+    async def __call__(self, data: CallModelData[Any], kind: str = "turn") -> ModelInputData:
+        if data.agent.handoffs or (self._agent is not None and data.agent is not self._agent):
+            raise UserError("Handoffs are not supported by LiveContext: each agent needs its own context policy.")
+        self._agent = data.agent
+        return await super().__call__(data, kind)
 
     @property
     def input_items(self) -> list[Item]:
@@ -41,6 +59,36 @@ class LiveContext(ContextManager):
     async def read(self) -> str:
         """The context file as it stands, or an empty string if nothing has been written."""
         return await self.store.read() or ""
+
+    async def save_checkpoint(self, path: str | Path) -> None:
+        """Save idle conversation state. Keep this trusted file outside the agent's workspace."""
+        with self._exclusive():
+            await self._save_checkpoint(path)
+
+    async def _save_checkpoint(self, path: str | Path) -> None:
+        if self._queued:
+            raise UserError("Process queued input before saving a checkpoint")
+        if isinstance(self.store, LocalContextStore) and Path(os.path.abspath(path)) == self.store.path:
+            raise UserError("The checkpoint must be separate from the editable context file")
+        await self._sync_edit(self._last_instructions)
+        await self._write()
+        store = LocalContextStore(path, max_bytes=MAX_CHECKPOINT_BYTES)
+        await store.write(encode_checkpoint(self.file_format, self.protected, self.turns))
+
+    async def restore_checkpoint(self, path: str | Path) -> None:
+        """Restore trusted completed context; tools, instructions, and policy stay application-owned."""
+        with self._exclusive():
+            text = await LocalContextStore(path, max_bytes=MAX_CHECKPOINT_BYTES).read()
+            if text is None:
+                raise FileNotFoundError(path)
+            protected, turns, rendered = decode_checkpoint(text, self.file_format)
+            await self.store.write(rendered)
+            self.protected, self.turns, self._written = protected, turns, rendered
+            self._queued = []
+            self.trace = ContextTrace()
+            self.attempted = None
+            self._last_instructions = ""
+            self.begin_run()
 
     def _instructions(self, base: str | None) -> str:
         section = self.settings.prompt.format(limit=self.limit, path=self.store.location)
@@ -52,7 +100,11 @@ class LiveContext(ContextManager):
 
     async def _sync_edit(self, instructions: str) -> tuple[str, dict[str, Any] | None]:
         """Apply the file's contents to the live context. Returns a note for the model."""
-        on_disk = await self.store.read()
+        try:
+            on_disk = await self.store.read()
+        except ContextFileTooLarge as exc:
+            note = f"\n[{file_name(self.store)}: edit REJECTED, file exceeds the {exc.limit}-byte limit]"
+            return note, {"status": "rejected", "reason": "file_too_large"}
         if on_disk is None or on_disk.strip() == self._written.strip():
             return "", None
         candidate = self.file_format.parse(on_disk, self.turns)
@@ -68,6 +120,7 @@ class LiveContext(ContextManager):
 
     async def update(self, model_data: ModelInputData, new: list[Item]) -> ModelInputData:
         instructions = self._instructions(model_data.instructions)
+        self._last_instructions = instructions
         to_turn = self.file_format.item_to_turn
         if self.protected is None:
             protect = self.settings.protect
@@ -87,16 +140,19 @@ class LiveContext(ContextManager):
             tokens = self._tokens(instructions, self.turns)
             near = self.settings.warn_near_limit and tokens > self.limit - self.settings.reserve
             warn = f" - near the limit, compact {name} now" if near else ""
-            tool_turns[-1].set_text(f"{tool_turns[-1].text}{note}\n[context: ~{tokens}/{self.limit} tokens{warn}]")
+            tool_turns[-1].append_text(f"{note}\n[context: ~{tokens}/{self.limit} tokens{warn}]")
 
         await self._write()
         self._step_info["file"] = self._written
         return ModelInputData(input=self.input_items, instructions=instructions)
 
     async def absorb(self, new: list[Item]) -> None:
+        # A terminal tool can edit the file without triggering another model-input filter.
+        await self._sync_edit(self._last_instructions)
         self.turns.extend(t for t in map(self.file_format.item_to_turn, new) if t)
         await self._write()
 
     async def _write(self) -> None:
-        self._written = self.file_format.render(self.turns)
-        await self.store.write(self._written)
+        rendered = self.file_format.render(self.turns)
+        await self.store.write(rendered)
+        self._written = rendered

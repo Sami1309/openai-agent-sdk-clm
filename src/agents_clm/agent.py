@@ -39,7 +39,8 @@ class CLMAgent(Agent[TContext], Generic[TContext]):
         super().__post_init__()
         if self.live is None:
             workdir = Path(self.workdir or tempfile.mkdtemp(prefix="clm_")).resolve()
-            self.live = LiveContext(self.context_settings, store=LocalContextStore.in_workdir(workdir))
+            store = LocalContextStore.in_workdir(workdir, max_bytes=self.context_settings.max_file_bytes)
+            self.live = LiveContext(self.context_settings, store=store)
             if not any(getattr(t, "name", None) == "bash" for t in self.tools):
                 shell = LocalShell(workdir, allow_unsandboxed=self.allow_unsandboxed)
                 self.tools = [*self.tools, shell.tool()]

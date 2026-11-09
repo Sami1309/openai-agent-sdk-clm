@@ -60,6 +60,14 @@ def usd_cost(model: str, record: dict[str, Any]) -> float | None:
     return (fresh * prices[0] + cached * prices[1] + record["generated_tokens"] * prices[2]) / 1e6
 
 
+def validate_carry(earlier: dict[str, Any], *, source: str, model: str, reasoning: str | None, budget: int) -> None:
+    """Do not relabel old results as measurements of a different experiment."""
+    expected = {"source": source, "model": model, "reasoning": reasoning, "budget": budget}
+    mismatched = [name for name, value in expected.items() if earlier.get(name) != value]
+    if mismatched:
+        raise ValueError(f"Cannot carry results with different {', '.join(mismatched)}")
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--profile", choices=["pilot", "figure2"], default="pilot")
@@ -107,6 +115,13 @@ async def main() -> int:
     carried_usd = 0.0
     if args.carry:
         earlier = json.loads((RUNS / args.carry / "summary.json").read_text())
+        try:
+            validate_carry(
+                earlier, source=source, model="scripted" if args.scripted else args.model,
+                reasoning=None if args.scripted else args.reasoning, budget=32_768,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
         wanted = set(matrix)
         for record in earlier["results"]:
             row = (record["task"], record["level"], record["seed"], record["method"])

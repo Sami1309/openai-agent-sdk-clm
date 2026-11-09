@@ -8,24 +8,29 @@ reads from the user's home directory.
 from __future__ import annotations
 
 import asyncio
+import codecs
 import contextlib
+import json
+import math
 import os
 import platform
+import signal
 from pathlib import Path
 
 from agents import FunctionTool, function_tool
 
 
 def _macos_profile(workdir: Path) -> str:
-    home = os.path.realpath(Path.home())
+    home = json.dumps(os.path.realpath(Path.home()), ensure_ascii=False)
+    workspace = json.dumps(str(workdir), ensure_ascii=False)
     return f"""(version 1)
 (allow default)
 (deny network*)
 (deny file-write*)
-(allow file-write* (subpath "{workdir}") (subpath "/dev"))
+(allow file-write* (subpath {workspace}) (subpath "/dev"))
 (allow file-write* (regex #"^/private/var/folders/[^/]+/[^/]+/T/xcrun_db"))
-(deny file-read* (subpath "{home}"))
-(allow file-read* (subpath "{workdir}"))
+(deny file-read* (subpath {home}))
+(allow file-read* (subpath {workspace}))
 """
 
 
@@ -40,6 +45,10 @@ class LocalShell:
         max_output_chars: int = 50_000,
         allow_unsandboxed: bool = False,
     ) -> None:
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("timeout must be positive and finite")
+        if type(max_output_chars) is not int or max_output_chars <= 0:
+            raise ValueError("max_output_chars must be a positive integer")
         self.workdir = Path(os.path.realpath(workdir))
         self.timeout = timeout
         self.max_output_chars = max_output_chars
@@ -70,21 +79,47 @@ class LocalShell:
             env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            start_new_session=True,
         )
+        assert process.stdout is not None
+        output_task = asyncio.create_task(self._read_output(process.stdout))
         try:
-            stdout, _ = await asyncio.wait_for(process.communicate(), self.timeout)
+            output, _ = await asyncio.wait_for(
+                asyncio.gather(output_task, process.wait()), self.timeout
+            )
         except asyncio.TimeoutError:
-            with contextlib.suppress(ProcessLookupError):
-                process.kill()
-            await process.wait()
             return f"Command timed out after {self.timeout:g}s.", None
-        return self._clip(stdout.decode(errors="replace").rstrip()), process.returncode
+        finally:
+            # Killing only bash leaves background descendants alive, including on task
+            # cancellation. They can keep editing the context and holding stdout open.
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+            await process.wait()
+            if not output_task.done():
+                output_task.cancel()
+            await asyncio.gather(output_task, return_exceptions=True)
+        return output, process.returncode
 
-    def _clip(self, output: str) -> str:
-        if len(output) <= self.max_output_chars:
-            return output
-        half = self.max_output_chars // 2
-        return f"{output[:half]}\n---- {len(output) - 2 * half} chars elided ----\n{output[-half:]}"
+    async def _read_output(self, stream: asyncio.StreamReader) -> str:
+        """Drain stdout while retaining only a bounded head and tail."""
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+        head_size = (self.max_output_chars + 1) // 2
+        tail_size = self.max_output_chars // 2
+        head = tail = ""
+        total = 0
+        while True:
+            chunk = await stream.read(65_536)
+            text = decoder.decode(chunk, final=not chunk)
+            total += len(text)
+            head += text[:max(0, head_size - len(head))]
+            if tail_size:
+                tail = (tail + text)[-tail_size:]
+            if not chunk:
+                break
+        if total <= self.max_output_chars:
+            remaining = total - len(head)
+            return (head + (tail[-remaining:] if remaining else "")).rstrip()
+        return f"{head}\n---- {total - len(head) - len(tail)} chars elided ----\n{tail}".rstrip()
 
     def tool(self) -> FunctionTool:
         shell = self

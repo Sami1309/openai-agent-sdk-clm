@@ -12,3 +12,11 @@ class ContextBudgetExceeded(AgentsException):
         super().__init__(f"Context of {tokens} tokens exceeds the {limit}-token limit.")
         self.tokens = tokens
         self.limit = limit
+
+
+class ContextFileTooLarge(AgentsException):
+    """The context file exceeds the configured byte limit."""
+
+    def __init__(self, limit: int) -> None:
+        super().__init__(f"Context file exceeds the {limit}-byte limit.")
+        self.limit = limit

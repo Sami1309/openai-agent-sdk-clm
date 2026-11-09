@@ -23,12 +23,14 @@ async def main() -> None:
         instructions="Use bash to answer. When you are done with a long output, remove it from your context file.",
         tools=[LocalShell(workdir).tool()],
     )
-    result = await Runner.run(
-        agent,
-        "Print the numbers 1 to 300, then tell me the sum of the first and last.",
-        run_config=RunConfig(call_model_input_filter=live),
-        max_turns=10,
-    )
+    with live.run_scope():
+        result = await Runner.run(
+            agent,
+            "Print the numbers 1 to 300, then tell me the sum of the first and last.",
+            run_config=RunConfig(call_model_input_filter=live),
+            max_turns=10,
+        )
+        await live.finish(result)
     print(result.final_output)
     print(await live.read())
 

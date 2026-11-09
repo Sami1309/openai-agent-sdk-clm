@@ -2,6 +2,7 @@
 
 import hashlib
 
+import pytest
 from agents import ModelSettings
 from agents.run_config import ModelInputData
 
@@ -9,6 +10,7 @@ from agents_clm import ContextSettings
 from benchmarks.harnesses import COMPACT_PROMPT, OpStream, SummaryManager, run_one
 from benchmarks.scripted import ScriptedModel, message, needle_policy
 from benchmarks.suite import ASSETS, build_instance, skill_path, task_instruction
+from benchmarks.run import validate_carry
 
 PUBLISHED_CLM_SKILLS = {
     "kv_store": "70695bdca1a7f39d",
@@ -16,6 +18,16 @@ PUBLISHED_CLM_SKILLS = {
     "needle_retention": "e834d24bf004c7ae",
     "sudoku_sketchpad": "378c4e5d928af06f",
 }
+
+
+@pytest.mark.parametrize("field,value", [
+    ("source", "scripted"), ("model", "other-model"), ("reasoning", "high"), ("budget", 16_384),
+])
+def test_carry_rejects_different_experiment_settings(field, value):
+    expected = {"source": "live", "model": "gpt-5.4", "reasoning": "default", "budget": 32_768}
+    validate_carry(dict(expected), **expected)
+    with pytest.raises(ValueError, match=field):
+        validate_carry({**expected, field: value}, **expected)
 
 
 def test_vendored_clm_skills_match_the_paper_byte_for_byte():

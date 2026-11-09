@@ -17,8 +17,11 @@ from __future__ import annotations
 
 import json
 import re
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
+
+from agents import UserError
 
 Item = dict[str, Any]
 
@@ -41,6 +44,14 @@ class Turn:
         self.text = text
         if self.raw is not None and self.raw.get("type") == "function_call_output":
             self.raw["output"] = text
+
+    def append_text(self, text: str) -> None:
+        """Append a readout without replacing images or files in a tool result."""
+        if self.raw is not None and isinstance(self.raw.get("output"), list):
+            self.text += text
+            self.raw["output"].append({"type": "input_text", "text": text})
+        else:
+            self.set_text(self.text + text)
 
     def plain(self) -> Item:
         return {"role": "assistant" if self.role == "assistant" else "user", "content": self.text}
@@ -77,14 +88,15 @@ class ContextFileFormat:
             output = item.get("output")
             text = output if isinstance(output, str) else json.dumps(output)
             text = text.strip() or "(no output)"
-            return Turn("tool", text, {"type": kind, "call_id": item["call_id"], "output": text})
+            return Turn("tool", text, {"type": kind, "call_id": item["call_id"], "output": deepcopy(output)})
         if "role" in item:
             text, complete = content_text(item.get("content"))
             text = text.strip()
             if not text:
                 return None
-            return Turn(item["role"], text, None if complete else dict(item))
-        return Turn("assistant", json.dumps(item))
+            preserve = not complete or item["role"] in ("system", "developer")
+            return Turn(item["role"], text, deepcopy(item) if preserve else None)
+        raise UserError(f"Unsupported live-context item type: {kind!r}. Use messages and function tools.")
 
     def render(self, turns: list[Turn]) -> str:
         blocks = [
@@ -117,7 +129,7 @@ class ContextFileFormat:
             same = next((t for t in candidates if id(t) not in used and t.role == role and t.text == body), None)
             if same is not None:
                 used.add(id(same))
-                turns.append(Turn(role, body, same.raw))
+                turns.append(Turn(role, body, deepcopy(same.raw)))
             elif slot is not None and id(slot) not in used and role == slot.role == "tool" and slot.raw is not None:
                 used.add(id(slot))
                 turns.append(Turn(role, body, {**slot.raw, "output": body}))
