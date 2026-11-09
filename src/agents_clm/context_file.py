@@ -94,7 +94,7 @@ class ContextFileFormat:
             text = text.strip()
             if not text:
                 return None
-            preserve = not complete or item["role"] in ("system", "developer")
+            preserve = not complete or item["role"] in ("system", "developer") or item.get("phase") is not None
             return Turn(item["role"], text, deepcopy(item) if preserve else None)
         raise UserError(f"Unsupported live-context item type: {kind!r}. Use messages and function tools.")
 
@@ -133,6 +133,10 @@ class ContextFileFormat:
             elif slot is not None and id(slot) not in used and role == slot.role == "tool" and slot.raw is not None:
                 used.add(id(slot))
                 turns.append(Turn(role, body, {**slot.raw, "output": body}))
+            elif (slot is not None and id(slot) not in used and role == slot.role == "assistant"
+                  and slot.raw is not None and slot.raw.get("phase") is not None):
+                used.add(id(slot))
+                turns.append(Turn(role, body, {"role": role, "content": body, "phase": slot.raw["phase"]}))
             else:
                 turns.append(Turn(role, body))
         return turns

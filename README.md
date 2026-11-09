@@ -14,6 +14,8 @@ uv run python -m pytest                     # offline tests
 uv run python -m benchmarks.run --scripted  # offline demo
 ```
 
+With API credits, run `uv run --env-file .env python -m benchmarks.integration` for live checks of tools, images, checkpoints, message phases, and budget enforcement.
+
 Set `OPENAI_API_KEY` to run a real model. The default shell uses macOS `sandbox-exec`; on other POSIX systems, use an [SDK sandbox](examples/sandbox_agent.py), or run inside a container with `allow_unsandboxed=True`.
 
 ```python
@@ -71,6 +73,6 @@ See [usage and compatibility](docs/usage.md) for checkpoint guarantees and detai
 
 ## Benchmarks and provenance
 
-[Historical ContextBench results](benchmarks/RESULTS.md) are incomplete, single-seed measurements from the initial implementation. They have not been rerun after the reliability fixes. View local runs with `uv run python -m dashboard` at `http://127.0.0.1:8765`.
+[Evaluation results](benchmarks/RESULTS.md) include live validation and earlier exploratory ContextBench measurements. View local runs with `uv run python -m dashboard` at `http://127.0.0.1:8765`.
 
 ContextBench's bundled skills and level definitions are Apache-2.0. The authors' [reference implementation](https://github.com/facebookresearch/context-language-models) is CC BY-NC 4.0. This is an independent implementation using the same `[[CTX_TURN]]` file format.

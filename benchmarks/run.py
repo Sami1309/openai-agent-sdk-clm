@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import os
 import shutil
 import sys
@@ -20,8 +21,10 @@ from typing import Any
 from agents import ModelSettings, set_default_openai_client
 from openai import AsyncOpenAI
 from openai.types.shared import Reasoning
+from agents_clm import UsageTrackingResponsesModel
 
 from .harnesses import METHODS, run_one
+from .provenance import provenance
 from .scripted import ScriptedModel, needle_policy
 from .suite import build_instance
 
@@ -60,9 +63,12 @@ def usd_cost(model: str, record: dict[str, Any]) -> float | None:
     return (fresh * prices[0] + cached * prices[1] + record["generated_tokens"] * prices[2]) / 1e6
 
 
-def validate_carry(earlier: dict[str, Any], *, source: str, model: str, reasoning: str | None, budget: int) -> None:
+def validate_carry(earlier: dict[str, Any], *, source: str, model: str, reasoning: str | None, budget: int,
+                   code_fingerprint: str | None = None) -> None:
     """Do not relabel old results as measurements of a different experiment."""
     expected = {"source": source, "model": model, "reasoning": reasoning, "budget": budget}
+    if code_fingerprint is not None:
+        expected["code_fingerprint"] = code_fingerprint
     mismatched = [name for name, value in expected.items() if earlier.get(name) != value]
     if mismatched:
         raise ValueError(f"Cannot carry results with different {', '.join(mismatched)}")
@@ -75,12 +81,17 @@ async def main() -> int:
     parser.add_argument("--model", default="gpt-5.4")
     parser.add_argument("--reasoning", default="default", help="reasoning effort, or 'default' to omit it")
     parser.add_argument("--concurrency", type=int, default=6)
-    parser.add_argument("--tasks", nargs="*", help="only these families")
-    parser.add_argument("--methods", nargs="*", help="only these methods")
-    parser.add_argument("--seeds", nargs="*", type=int, help="override the profile's seeds")
+    parser.add_argument("--tasks", nargs="+", choices=list(FIGURE2), help="only these families")
+    parser.add_argument("--levels", nargs="+", help="only these levels within the selected profile and families")
+    parser.add_argument("--methods", nargs="+", choices=METHODS, help="only these methods")
+    parser.add_argument("--seeds", nargs="+", type=int, help="override the profile's seeds")
     parser.add_argument("--max-usd", type=float, default=30.0, help="start no new run past this estimated spend")
     parser.add_argument("--carry", help="reuse finished results from this earlier run id instead of rerunning them")
     args = parser.parse_args()
+    if args.concurrency <= 0 or not math.isfinite(args.max_usd) or args.max_usd <= 0:
+        parser.error("--concurrency and --max-usd must be positive; --max-usd must be finite")
+    if not args.scripted and args.model not in PRICES:
+        parser.error("Add the model's token prices to PRICES before running a paid evaluation")
 
     if not args.scripted and not os.environ.get("OPENAI_API_KEY"):
         print("OPENAI_API_KEY is not set. Use --scripted for an offline run.", file=sys.stderr)
@@ -91,15 +102,25 @@ async def main() -> int:
     methods = args.methods or profile.get("methods") or list(METHODS)
     seeds = args.seeds or profile["seeds"]
     levels = {f: v for f, v in profile["levels"].items() if not args.tasks or f in args.tasks}
+    if args.levels:
+        available = {level for family in levels.values() for level in family}
+        if set(args.levels) - available:
+            parser.error("--levels must belong to the selected profile and families")
+        levels = {f: [level for level in ls if level in args.levels] for f, ls in levels.items()}
     matrix = [(f, level, seed, m) for f, ls in levels.items() for level in ls for seed in seeds for m in methods]
+    if not matrix:
+        parser.error("No evaluations match the selected profile and families")
+    metadata = provenance()
 
     run_id = f"{time.strftime('%Y%m%d-%H%M%S')}-{name}"
     out = RUNS / run_id
     out.mkdir(parents=True)
     source = "scripted" if args.scripted else "live"
     settings = ModelSettings(max_tokens=8192)
+    client = None
     if not args.scripted:
-        set_default_openai_client(AsyncOpenAI(max_retries=8, timeout=300))
+        client = AsyncOpenAI(max_retries=8, timeout=300)
+        set_default_openai_client(client)
         if args.reasoning != "default":
             settings = ModelSettings(max_tokens=8192, reasoning=Reasoning(effort=args.reasoning))
 
@@ -119,6 +140,7 @@ async def main() -> int:
             validate_carry(
                 earlier, source=source, model="scripted" if args.scripted else args.model,
                 reasoning=None if args.scripted else args.reasoning, budget=32_768,
+                code_fingerprint=metadata["code_fingerprint"],
             )
         except ValueError as exc:
             parser.error(str(exc))
@@ -145,6 +167,7 @@ async def main() -> int:
             "estimated_usd": round(state["spent"] + carried_usd, 2),
             "skipped_over_budget": state["skipped"],
             "results": results,
+            **metadata,
         }
         (out / "summary.json").write_text(json.dumps(payload, indent=1))
 
@@ -154,7 +177,7 @@ async def main() -> int:
                 state["skipped"] += 1
                 write_summary()
                 return
-            model: Any = ScriptedModel(needle_policy(method)) if args.scripted else args.model
+            model: Any = ScriptedModel(needle_policy(method)) if args.scripted else UsageTrackingResponsesModel(args.model, client)
             output = await run_one(family, level, seed, method, model, settings=settings)
         record = output["record"]
         record["usd"] = None if args.scripted else usd_cost(args.model, record)
@@ -175,6 +198,8 @@ async def main() -> int:
 
     write_summary()
     await asyncio.gather(*(one(*row) for row in matrix))
+    if client is not None:
+        await client.close()
     write_summary()
     errors = sum(r["terminated"] == "error" for r in results)
     print(f"Wrote {out}; estimated ${state['spent']:.2f}; {errors} errors; {state['skipped']} skipped")

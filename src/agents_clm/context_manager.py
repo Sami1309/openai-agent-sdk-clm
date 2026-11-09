@@ -41,6 +41,7 @@ class ContextManager:
         """Call before each ``Runner.run``. The runner's item list starts over on every run."""
         self._seen = 0
         self._runner_items = []
+        self.trace.begin_run()
 
     @contextmanager
     def run_scope(self) -> Iterator[None]:

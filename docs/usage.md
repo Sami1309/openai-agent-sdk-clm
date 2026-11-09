@@ -29,6 +29,10 @@ Each generation adds a counting round trip. Count errors abort generation; there
 
 `ContextBudgetExceeded` ends the run; there is no automatic compaction retry. Trace readouts, prefix reuse, reference compute, and projected costs remain estimates. `model.last_input_tokens` reports the most recent provider count.
 
+The adapter retains provider-reported usage for failed or incomplete Responses requests, including output-limit failures. Rejected preflight requests do not count as generations or prime estimated prefix reuse. For custom drivers, call `manager.begin_run()` before each run and attach usage from that run; usage entries map to completed requests at its start.
+
+`UsageTrackingResponsesModel(model, client)` preserves that failure billing without adding token-count requests or changing output limits. The benchmark runner uses it so failed compactions and interrupted generations remain in cost reports.
+
 ## Checkpoints
 
 The editable file alone cannot restore protected inputs or structured tool metadata. Save a separate checkpoint to continue a local agent's conversation after a process restart:
@@ -73,6 +77,7 @@ For a `SandboxAgent`, add `ContextFile` alongside the SDK's `Shell` capability a
 - `CLMRunner` does not support streaming or `RunState`/approval resumption. Do not configure approval-dependent tools for it.
 - Messages and function calls/results are supported. Opaque reasoning items are dropped. Hosted-tool history items are rejected rather than converted into plain text.
 - Structured image/file content remains intact until its turn is explicitly edited into text. Edits cannot forge a new privileged message; existing system/developer messages retain their original roles.
+- Assistant `phase` metadata survives replay and in-place text edits, keeping commentary distinct from final answers as recommended in the [OpenAI reasoning guide](https://developers.openai.com/api/docs/guides/reasoning).
 - SDK `agent.clone()` is shallow and shares live context and tool instances. Construct independent agents and workspaces for independent conversations. The run lock does not coordinate separate processes or separate contexts pointed at the same file.
 
 ## Storage and shell boundaries

@@ -7,6 +7,7 @@ Keep the SDK version bound and the request-parity tests when upgrading that depe
 from __future__ import annotations
 
 from copy import deepcopy
+from contextlib import contextmanager
 from dataclasses import replace
 from typing import Any
 
@@ -29,7 +30,37 @@ _COUNT_FIELDS = {
 _NON_CONTEXT_EXTRA_ARGS = {"prompt_cache_key", "service_tier", "safety_identifier"}
 
 
-class BudgetedResponsesModel(OpenAIResponsesModel):
+@contextmanager
+def _preflight():
+    """Keep the original exception type while identifying ungenerated requests."""
+    try:
+        yield
+    except Exception as exc:
+        exc._clm_preflight_failed = True
+        raise
+
+
+class UsageTrackingResponsesModel(OpenAIResponsesModel):
+    """Preserve billed usage on non-streaming Responses failures for CLM traces."""
+
+    async def _fetch_response(self, *args: Any, **kwargs: Any) -> Any:
+        request = self._build_response_create_kwargs(*args, **kwargs)
+        if request.get("stream") is True:
+            return await super()._fetch_response(*args, **kwargs)
+        return await self._create_response(request)
+
+    async def _create_response(self, request: dict[str, Any]) -> Response:
+        response = await self._get_client().responses.create(**request)
+        if getattr(response, "status", None) in {"failed", "incomplete"}:
+            error = response_terminal_failure_error(f"response.{response.status}", response)
+            error._clm_response_usage = response.usage
+            error._clm_response_status = response.status
+            raise error
+        _mark_transport_request_without_usage(response)
+        return response
+
+
+class BudgetedResponsesModel(UsageTrackingResponsesModel):
     """Count the serialized request before generation and cap output at ``reserve``.
 
     Counts schemas, framing, and media using ``responses.input_tokens.count``. Each model
@@ -51,36 +82,33 @@ class BudgetedResponsesModel(OpenAIResponsesModel):
         previous_response_id: str | None = None, conversation_id: str | None = None,
         stream: bool = False, prompt: Any = None,
     ) -> Response:
-        if stream or prompt is not None or previous_response_id is not None or conversation_id is not None:
-            raise UserError("BudgetedResponsesModel requires non-streaming, explicit input without stored prompts or server history")
-        unknown_args = set(model_settings.extra_args or {}) - _NON_CONTEXT_EXTRA_ARGS
-        if model_settings.extra_body or unknown_args or model_settings.context_management:
-            raise UserError("BudgetedResponsesModel does not support payload overrides or server-side compaction")
-        if model_settings.truncation == "auto":
-            raise UserError("Automatic truncation would change the counted context")
+        with _preflight():
+            if stream or prompt is not None or previous_response_id is not None or conversation_id is not None:
+                raise UserError("BudgetedResponsesModel requires non-streaming, explicit input without stored prompts or server history")
+            unknown_args = set(model_settings.extra_args or {}) - _NON_CONTEXT_EXTRA_ARGS
+            if model_settings.extra_body or unknown_args or model_settings.context_management:
+                raise UserError("BudgetedResponsesModel does not support payload overrides or server-side compaction")
+            if model_settings.truncation == "auto":
+                raise UserError("Automatic truncation would change the counted context")
 
-        reserve = self.context_settings.reserve
-        limit = self.context_settings.limit
-        if reserve <= 0:
-            raise ValueError("BudgetedResponsesModel requires a positive output reserve")
-        settings = replace(model_settings, max_tokens=min(model_settings.max_tokens or reserve, reserve))
-        # Build once. The exact same payload is counted and generated, even if another
-        # task changes a tool definition while the counting request is in flight.
-        request = deepcopy(self._build_response_create_kwargs(
-            system_instructions, input, settings, tools, output_schema, handoffs,
-            previous_response_id=None, conversation_id=None, stream=False, prompt=None,
-        ))
-        count_request = {key: value for key, value in request.items() if key in _COUNT_FIELDS}
-        client = self._get_client()
-        count = await client.responses.input_tokens.count(**count_request)
-        tokens = count.input_tokens
-        if type(tokens) is not int or tokens < 0:
-            raise UserError("The token-count endpoint returned an invalid input token count")
-        self.last_input_tokens = tokens
-        if tokens > limit:
-            raise ContextBudgetExceeded(tokens, limit)
-        response = await client.responses.create(**request)
-        if getattr(response, "status", None) in {"failed", "incomplete"}:
-            raise response_terminal_failure_error(f"response.{response.status}", response)
-        _mark_transport_request_without_usage(response)
-        return response
+            reserve = self.context_settings.reserve
+            limit = self.context_settings.limit
+            if reserve <= 0:
+                raise ValueError("BudgetedResponsesModel requires a positive output reserve")
+            settings = replace(model_settings, max_tokens=min(model_settings.max_tokens or reserve, reserve))
+            # Build once. The exact same payload is counted and generated, even if another
+            # task changes a tool definition while the counting request is in flight.
+            request = deepcopy(self._build_response_create_kwargs(
+                system_instructions, input, settings, tools, output_schema, handoffs,
+                previous_response_id=None, conversation_id=None, stream=False, prompt=None,
+            ))
+            count_request = {key: value for key, value in request.items() if key in _COUNT_FIELDS}
+            client = self._get_client()
+            count = await client.responses.input_tokens.count(**count_request)
+            tokens = count.input_tokens
+            if type(tokens) is not int or tokens < 0:
+                raise UserError("The token-count endpoint returned an invalid input token count")
+            self.last_input_tokens = tokens
+            if tokens > limit:
+                raise ContextBudgetExceeded(tokens, limit)
+        return await self._create_response(request)

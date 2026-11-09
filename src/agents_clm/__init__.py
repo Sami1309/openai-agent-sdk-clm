@@ -7,7 +7,7 @@ from .context_store import ContextStore, LocalContextStore
 from .exceptions import ContextBudgetExceeded, ContextFileTooLarge
 from .live_context import LiveContext
 from .metrics import ContextTrace, FlopsModel, turn_flops
-from .models import BudgetedResponsesModel
+from .models import BudgetedResponsesModel, UsageTrackingResponsesModel
 from .prompts import CONTEXT_PROMPT
 from .run import CLMRunner
 from .settings import ContextSettings
@@ -30,5 +30,6 @@ __all__ = [
     "LocalContextStore",
     "LocalShell",
     "Turn",
+    "UsageTrackingResponsesModel",
     "turn_flops",
 ]

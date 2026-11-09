@@ -51,12 +51,14 @@ class CLMRunner:
         with live.run_scope():
             try:
                 result = await Runner.run(agent, input, run_config=config, **kwargs)
-            except AgentsException as exc:
+            except Exception as exc:
                 if isinstance(exc, ContextBudgetExceeded) and live.trace.steps:
-                    step = live.trace.steps[-1]
-                    if step["kind"] == "turn":
-                        step.update(kind="over_budget", provider_input_tokens=exc.tokens)
-                if exc.run_data is not None:
+                    rejected = live.trace.reject_last("over_budget")
+                    if rejected and getattr(exc, "_clm_preflight_failed", False):
+                        live.trace.steps[-1]["provider_input_tokens"] = exc.tokens
+                else:
+                    live.trace.attach_failure(exc)
+                if isinstance(exc, AgentsException) and exc.run_data is not None:
                     if isinstance(exc, MaxTurnsExceeded):
                         await live.finish_max_turns(exc.run_data)
                         if checkpoint is not None:

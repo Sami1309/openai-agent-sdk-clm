@@ -153,6 +153,18 @@ def test_unsupported_item_types_are_not_silently_flattened():
         ContextFileFormat().item_to_turn({"type": "web_search_call", "id": "ws_1", "status": "completed"})
 
 
+@pytest.mark.parametrize("phase", ["commentary", "final_answer"])
+def test_assistant_phase_survives_roundtrip_and_in_place_text_edit(phase):
+    fmt = ContextFileFormat()
+    item = {"role": "assistant", "content": "long progress update", "phase": phase}
+    turn = fmt.item_to_turn(item)
+    rendered = fmt.render([turn])
+    assert fmt.to_wire(fmt.parse(rendered, [turn])) == [item]
+    assert fmt.to_wire(fmt.parse(rendered.replace("long progress update", "short note"), [turn])) == [
+        {"role": "assistant", "content": "short note", "phase": phase},
+    ]
+
+
 async def test_max_turns_retains_completed_tool_and_releases_run(tmp_path):
     live = make_live(tmp_path)
 

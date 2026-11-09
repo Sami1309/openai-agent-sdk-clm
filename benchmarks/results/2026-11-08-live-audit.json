@@ -1,0 +1,904 @@
+{
+  "date": "2026-11-08",
+  "scope": "Live SDK audit and selected ContextBench verification, not a paper reproduction",
+  "benchmarks": [
+    {
+      "model": "gpt-5.4",
+      "reasoning": "default",
+      "budget": 32768,
+      "planned": 12,
+      "code_fingerprint": null,
+      "git_commit": "2773004",
+      "environment": null,
+      "run_id": "20261108-195853-pilot",
+      "audit_status": {
+        "status": "interrupted_after_superseding_summary_fix",
+        "reason": "Remaining baseline jobs used faulty summary extraction; completed CLM/base results are retained. In-flight usage is not fully captured.",
+        "accuracy_exclusion": "All summary results from this run are diagnostic only."
+      },
+      "results": [
+        {
+          "task": "needle_retention",
+          "level": "K4-C24",
+          "method": "base",
+          "seed": 42,
+          "score": 0.3333333333333333,
+          "terminated": "budget_wall",
+          "ops_delivered": 8,
+          "ops_total": 24,
+          "model_calls": 7,
+          "peak_context": 28548,
+          "api_input_tokens": 117298,
+          "api_cached_tokens": 84480,
+          "generated_tokens": 154,
+          "compactions": 0,
+          "usd": 0.105475,
+          "trace_file": "needle_retention-K4-C24-base-s42.json",
+          "exclude_from_accuracy_comparison": false
+        },
+        {
+          "task": "sudoku_sketchpad",
+          "level": "t30",
+          "method": "base",
+          "seed": 42,
+          "score": 0.3,
+          "terminated": "budget_wall",
+          "ops_delivered": 9,
+          "ops_total": 30,
+          "model_calls": 17,
+          "peak_context": 30527,
+          "api_input_tokens": 302172,
+          "api_cached_tokens": 249088,
+          "generated_tokens": 15152,
+          "compactions": 0,
+          "usd": 0.422262,
+          "trace_file": "sudoku_sketchpad-t30-base-s42.json",
+          "exclude_from_accuracy_comparison": false
+        },
+        {
+          "task": "kv_store",
+          "level": "R1000",
+          "method": "base",
+          "seed": 42,
+          "score": 0.0,
+          "terminated": "budget_wall",
+          "ops_delivered": 4,
+          "ops_total": 34,
+          "model_calls": 3,
+          "peak_context": 25535,
+          "api_input_tokens": 47851,
+          "api_cached_tokens": 5888,
+          "generated_tokens": 14607,
+          "compactions": 0,
+          "usd": 0.3254845,
+          "trace_file": "kv_store-R1000-base-s42.json",
+          "exclude_from_accuracy_comparison": false
+        },
+        {
+          "task": "needle_retention",
+          "level": "K4-C24",
+          "method": "clm",
+          "seed": 42,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 24,
+          "ops_total": 24,
+          "model_calls": 24,
+          "peak_context": 9706,
+          "api_input_tokens": 197716,
+          "api_cached_tokens": 65792,
+          "generated_tokens": 5008,
+          "compactions": 0,
+          "usd": 0.421378,
+          "trace_file": "needle_retention-K4-C24-clm-s42.json",
+          "exclude_from_accuracy_comparison": false
+        },
+        {
+          "task": "log_triage",
+          "level": "L1600",
+          "method": "base",
+          "seed": 42,
+          "score": 0.0,
+          "terminated": "budget_wall",
+          "ops_delivered": 26,
+          "ops_total": 139,
+          "model_calls": 25,
+          "peak_context": 30416,
+          "api_input_tokens": 413533,
+          "api_cached_tokens": 353536,
+          "generated_tokens": 14517,
+          "compactions": 0,
+          "usd": 0.4561315,
+          "trace_file": "log_triage-L1600-base-s42.json",
+          "exclude_from_accuracy_comparison": false
+        },
+        {
+          "task": "sudoku_sketchpad",
+          "level": "t30",
+          "method": "clm",
+          "seed": 42,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 30,
+          "ops_total": 30,
+          "model_calls": 33,
+          "peak_context": 9425,
+          "api_input_tokens": 300602,
+          "api_cached_tokens": 190720,
+          "generated_tokens": 11966,
+          "compactions": 0,
+          "usd": 0.501875,
+          "trace_file": "sudoku_sketchpad-t30-clm-s42.json",
+          "exclude_from_accuracy_comparison": false
+        },
+        {
+          "task": "kv_store",
+          "level": "R1000",
+          "method": "clm",
+          "seed": 42,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 34,
+          "ops_total": 34,
+          "model_calls": 34,
+          "peak_context": 7850,
+          "api_input_tokens": 217203,
+          "api_cached_tokens": 133120,
+          "generated_tokens": 5326,
+          "compactions": 0,
+          "usd": 0.3233775,
+          "trace_file": "kv_store-R1000-clm-s42.json",
+          "exclude_from_accuracy_comparison": false
+        },
+        {
+          "task": "needle_retention",
+          "level": "K4-C24",
+          "method": "summary",
+          "seed": 42,
+          "score": 0.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 24,
+          "ops_total": 24,
+          "model_calls": 28,
+          "peak_context": 26360,
+          "api_input_tokens": 378778,
+          "api_cached_tokens": 172032,
+          "generated_tokens": 8585,
+          "compactions": 4,
+          "usd": 0.688648,
+          "trace_file": "needle_retention-K4-C24-summary-s42.json",
+          "exclude_from_accuracy_comparison": true
+        },
+        {
+          "task": "sudoku_sketchpad",
+          "level": "t30",
+          "method": "summary",
+          "seed": 42,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 30,
+          "ops_total": 30,
+          "model_calls": 34,
+          "peak_context": 26386,
+          "api_input_tokens": 494513,
+          "api_cached_tokens": 280832,
+          "generated_tokens": 58109,
+          "compactions": 4,
+          "usd": 1.4760455,
+          "trace_file": "sudoku_sketchpad-t30-summary-s42.json",
+          "exclude_from_accuracy_comparison": true
+        },
+        {
+          "task": "log_triage",
+          "level": "L1600",
+          "method": "clm",
+          "seed": 42,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 139,
+          "ops_total": 139,
+          "model_calls": 141,
+          "peak_context": 8549,
+          "api_input_tokens": 654034,
+          "api_cached_tokens": 362752,
+          "generated_tokens": 33150,
+          "compactions": 0,
+          "usd": 1.316143,
+          "trace_file": "log_triage-L1600-clm-s42.json",
+          "exclude_from_accuracy_comparison": false
+        }
+      ],
+      "implementation_note": "Clean checkout of 2773004 at launch, before this audit added fingerprints."
+    },
+    {
+      "model": "gpt-5.4",
+      "reasoning": "default",
+      "budget": 32768,
+      "planned": 4,
+      "code_fingerprint": "3268cf89ebeb048a3002b329f1f524fbcc68eb47a9f9244f88e235c827d1f090",
+      "git_commit": "27730045c934c97d56fe5952b76892405db27147",
+      "environment": {
+        "python": "3.12.12",
+        "openai-agents": "0.24.0",
+        "openai": "3.46.0",
+        "contextbench": "0.1.0",
+        "tiktoken": "0.14.0"
+      },
+      "run_id": "20261108-200659-figure2",
+      "audit_status": {
+        "status": "completed_with_provider_error",
+        "reason": "One summary run received an API prompt rejection; another completed with the superseded extraction logic.",
+        "accuracy_exclusion": "All summary results from this run are diagnostic only. CLM results are retained."
+      },
+      "results": [
+        {
+          "task": "needle_retention",
+          "level": "K8-C60",
+          "method": "clm",
+          "seed": 43,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 60,
+          "ops_total": 60,
+          "model_calls": 60,
+          "peak_context": 21507,
+          "api_input_tokens": 851024,
+          "api_cached_tokens": 507136,
+          "generated_tokens": 12533,
+          "compactions": 0,
+          "usd": 1.174499,
+          "trace_file": "needle_retention-K8-C60-clm-s43.json",
+          "exclude_from_accuracy_comparison": false
+        },
+        {
+          "task": "needle_retention",
+          "level": "K8-C60",
+          "method": "clm",
+          "seed": 44,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 60,
+          "ops_total": 60,
+          "model_calls": 60,
+          "peak_context": 21442,
+          "api_input_tokens": 849689,
+          "api_cached_tokens": 499200,
+          "generated_tokens": 12473,
+          "compactions": 0,
+          "usd": 1.1881175,
+          "trace_file": "needle_retention-K8-C60-clm-s44.json",
+          "exclude_from_accuracy_comparison": false
+        },
+        {
+          "task": "needle_retention",
+          "level": "K8-C60",
+          "method": "summary",
+          "seed": 43,
+          "score": null,
+          "terminated": "error",
+          "ops_delivered": 49,
+          "ops_total": 60,
+          "model_calls": 56,
+          "peak_context": 28239,
+          "api_input_tokens": 780287,
+          "api_cached_tokens": 372480,
+          "generated_tokens": 39776,
+          "compactions": 8,
+          "usd": 1.7092775,
+          "trace_file": "needle_retention-K8-C60-summary-s43.json",
+          "exclude_from_accuracy_comparison": true,
+          "error_type": "BadRequestError"
+        },
+        {
+          "task": "needle_retention",
+          "level": "K8-C60",
+          "method": "summary",
+          "seed": 44,
+          "score": 0.06666666666666667,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 60,
+          "ops_total": 60,
+          "model_calls": 70,
+          "peak_context": 28498,
+          "api_input_tokens": 1066762,
+          "api_cached_tokens": 523520,
+          "generated_tokens": 51429,
+          "compactions": 10,
+          "usd": 2.26042,
+          "trace_file": "needle_retention-K8-C60-summary-s44.json",
+          "exclude_from_accuracy_comparison": true
+        }
+      ]
+    },
+    {
+      "model": "gpt-5.4",
+      "reasoning": "default",
+      "budget": 32768,
+      "planned": 1,
+      "code_fingerprint": "1dbc29d12130f49c605e3252c941438da8ca8f22f30e3a5c51e77cdffc3ba131",
+      "git_commit": "27730045c934c97d56fe5952b76892405db27147",
+      "environment": {
+        "python": "3.12.12",
+        "openai-agents": "0.24.0",
+        "openai": "3.46.0",
+        "contextbench": "0.1.0",
+        "tiktoken": "0.14.0"
+      },
+      "run_id": "20261108-200911-pilot",
+      "audit_status": {
+        "status": "completed"
+      },
+      "results": [
+        {
+          "task": "needle_retention",
+          "level": "K4-C24",
+          "method": "summary",
+          "seed": 42,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 24,
+          "ops_total": 24,
+          "model_calls": 28,
+          "peak_context": 27035,
+          "api_input_tokens": 396797,
+          "api_cached_tokens": 186880,
+          "generated_tokens": 7762,
+          "compactions": 4,
+          "usd": 0.6879425,
+          "trace_file": "needle_retention-K4-C24-summary-s42.json",
+          "exclude_from_accuracy_comparison": false
+        }
+      ]
+    },
+    {
+      "model": "gpt-5.4",
+      "reasoning": "default",
+      "budget": 32768,
+      "planned": 4,
+      "code_fingerprint": "31ac8ded7ef18a0b2def052d0bfb39e137b60f3c125532084f0e6b941adf33c7",
+      "git_commit": "27730045c934c97d56fe5952b76892405db27147",
+      "environment": {
+        "python": "3.12.12",
+        "openai-agents": "0.24.0",
+        "openai": "3.46.0",
+        "contextbench": "0.1.0",
+        "tiktoken": "0.14.0"
+      },
+      "run_id": "20261108-201113-pilot",
+      "audit_status": {
+        "status": "interrupted_after_compaction_failure_fix",
+        "reason": "Stopped in-flight summary jobs using the old compaction retry path after validating the corrected failure handling. Completed non-error results are retained. In-flight usage is not fully captured."
+      },
+      "results": [
+        {
+          "task": "needle_retention",
+          "level": "K4-C24",
+          "method": "summary",
+          "seed": 42,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 24,
+          "ops_total": 24,
+          "model_calls": 28,
+          "peak_context": 26978,
+          "api_input_tokens": 396342,
+          "api_cached_tokens": 206080,
+          "generated_tokens": 7691,
+          "compactions": 4,
+          "usd": 0.64254,
+          "trace_file": "needle_retention-K4-C24-summary-s42.json",
+          "exclude_from_accuracy_comparison": false
+        },
+        {
+          "task": "sudoku_sketchpad",
+          "level": "t30",
+          "method": "summary",
+          "seed": 42,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 30,
+          "ops_total": 30,
+          "model_calls": 34,
+          "peak_context": 26297,
+          "api_input_tokens": 492481,
+          "api_cached_tokens": 277760,
+          "generated_tokens": 57670,
+          "compactions": 4,
+          "usd": 1.4712925,
+          "trace_file": "sudoku_sketchpad-t30-summary-s42.json",
+          "exclude_from_accuracy_comparison": false
+        }
+      ]
+    },
+    {
+      "model": "gpt-5.4",
+      "reasoning": "default",
+      "budget": 32768,
+      "planned": 2,
+      "code_fingerprint": "35e63579d118fa9d025f10604d38606f64dea224f17c77c5a3fa8372155f9202",
+      "git_commit": "27730045c934c97d56fe5952b76892405db27147",
+      "environment": {
+        "python": "3.12.12",
+        "openai-agents": "0.24.0",
+        "openai": "3.46.0",
+        "contextbench": "0.1.0",
+        "tiktoken": "0.14.0"
+      },
+      "run_id": "20261108-201311-figure2",
+      "audit_status": {
+        "status": "interrupted_after_compaction_failure_fix",
+        "reason": "Stopped in-flight summary jobs using the old compaction retry path after validating the corrected failure handling. Completed non-error results are retained. In-flight usage is not fully captured."
+      },
+      "results": [
+        {
+          "task": "needle_retention",
+          "level": "K8-C60",
+          "method": "clm",
+          "seed": 43,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 60,
+          "ops_total": 60,
+          "model_calls": 60,
+          "peak_context": 21511,
+          "api_input_tokens": 851238,
+          "api_cached_tokens": 499200,
+          "generated_tokens": 12568,
+          "compactions": 0,
+          "usd": 1.193415,
+          "trace_file": "needle_retention-K8-C60-clm-s43.json",
+          "exclude_from_accuracy_comparison": false
+        }
+      ]
+    },
+    {
+      "model": "gpt-5.4",
+      "reasoning": "default",
+      "budget": 32768,
+      "planned": 2,
+      "code_fingerprint": "bebf7f26522d4a47b91da5208f6d86138d2dd2bb2404e30f12dd759d4222d8ca",
+      "git_commit": "27730045c934c97d56fe5952b76892405db27147",
+      "environment": {
+        "python": "3.12.12",
+        "openai-agents": "0.24.0",
+        "openai": "3.46.0",
+        "contextbench": "0.1.0",
+        "tiktoken": "0.14.0"
+      },
+      "run_id": "20261108-202202-pilot",
+      "audit_status": {
+        "status": "completed"
+      },
+      "results": [
+        {
+          "task": "needle_retention",
+          "level": "K4-C24",
+          "method": "clm",
+          "seed": 42,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 24,
+          "ops_total": 24,
+          "model_calls": 24,
+          "peak_context": 9706,
+          "api_input_tokens": 197716,
+          "api_cached_tokens": 65792,
+          "generated_tokens": 5008,
+          "compactions": 0,
+          "usd": 0.421378,
+          "trace_file": "needle_retention-K4-C24-clm-s42.json",
+          "exclude_from_accuracy_comparison": false
+        },
+        {
+          "task": "needle_retention",
+          "level": "K4-C24",
+          "method": "summary",
+          "seed": 42,
+          "score": 1.0,
+          "terminated": "stream_exhausted",
+          "ops_delivered": 24,
+          "ops_total": 24,
+          "model_calls": 28,
+          "peak_context": 26967,
+          "api_input_tokens": 396121,
+          "api_cached_tokens": 185856,
+          "generated_tokens": 7662,
+          "compactions": 4,
+          "usd": 0.6870565,
+          "trace_file": "needle_retention-K4-C24-summary-s42.json",
+          "exclude_from_accuracy_comparison": false
+        }
+      ]
+    }
+  ],
+  "live_integrations": [
+    {
+      "run_id": "20261108-200512-integration",
+      "model": "gpt-5.4-mini",
+      "results": [
+        {
+          "case": "checkpoint_and_structured_tool",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "completed",
+              "counted_input_tokens": 615,
+              "api_input_tokens": 615,
+              "api_cached_tokens": 0,
+              "generated_tokens": 21
+            },
+            {
+              "status": "completed",
+              "counted_input_tokens": 659,
+              "api_input_tokens": 659,
+              "api_cached_tokens": 0,
+              "generated_tokens": 14
+            },
+            {
+              "status": "completed",
+              "counted_input_tokens": 761,
+              "api_input_tokens": 761,
+              "api_cached_tokens": 0,
+              "generated_tokens": 14
+            }
+          ],
+          "usd": 0.00174675
+        },
+        {
+          "case": "terminal_edit",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "completed",
+              "counted_input_tokens": 655,
+              "api_input_tokens": 655,
+              "api_cached_tokens": 0,
+              "generated_tokens": 103
+            }
+          ],
+          "usd": 0.00095475
+        },
+        {
+          "case": "image_tool",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "completed",
+              "counted_input_tokens": 644,
+              "api_input_tokens": 644,
+              "api_cached_tokens": 0,
+              "generated_tokens": 13
+            },
+            {
+              "status": "completed",
+              "counted_input_tokens": 685,
+              "api_input_tokens": 685,
+              "api_cached_tokens": 0,
+              "generated_tokens": 5
+            }
+          ],
+          "usd": 0.0010777500000000001
+        },
+        {
+          "case": "schema_budget",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "ContextBudgetExceeded",
+              "counted_input_tokens": 6627,
+              "api_input_tokens": 0,
+              "api_cached_tokens": 0,
+              "generated_tokens": 0
+            }
+          ],
+          "usd": 0
+        },
+        {
+          "case": "incomplete_usage",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "ModelBehaviorError",
+              "counted_input_tokens": 633,
+              "api_input_tokens": 633,
+              "api_cached_tokens": 0,
+              "generated_tokens": 16
+            }
+          ],
+          "usd": 0.00054675
+        }
+      ],
+      "estimated_usd": 0.004326
+    },
+    {
+      "run_id": "20261108-201113-integration",
+      "model": "gpt-5.4-mini",
+      "results": [
+        {
+          "case": "checkpoint_and_structured_tool",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "completed",
+              "counted_input_tokens": 617,
+              "api_input_tokens": 617,
+              "api_cached_tokens": 0,
+              "generated_tokens": 21
+            },
+            {
+              "status": "completed",
+              "counted_input_tokens": 661,
+              "api_input_tokens": 661,
+              "api_cached_tokens": 0,
+              "generated_tokens": 14
+            },
+            {
+              "status": "completed",
+              "counted_input_tokens": 766,
+              "api_input_tokens": 766,
+              "api_cached_tokens": 0,
+              "generated_tokens": 14
+            }
+          ],
+          "usd": 0.0017535
+        },
+        {
+          "case": "terminal_edit",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "completed",
+              "counted_input_tokens": 657,
+              "api_input_tokens": 657,
+              "api_cached_tokens": 0,
+              "generated_tokens": 104
+            }
+          ],
+          "usd": 0.00096075
+        },
+        {
+          "case": "image_tool",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "completed",
+              "counted_input_tokens": 642,
+              "api_input_tokens": 642,
+              "api_cached_tokens": 0,
+              "generated_tokens": 13
+            },
+            {
+              "status": "completed",
+              "counted_input_tokens": 683,
+              "api_input_tokens": 683,
+              "api_cached_tokens": 0,
+              "generated_tokens": 5
+            }
+          ],
+          "usd": 0.00107475
+        },
+        {
+          "case": "assistant_phase",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "completed",
+              "counted_input_tokens": 650,
+              "api_input_tokens": 650,
+              "api_cached_tokens": 0,
+              "generated_tokens": 7
+            },
+            {
+              "status": "completed",
+              "counted_input_tokens": 668,
+              "api_input_tokens": 668,
+              "api_cached_tokens": 0,
+              "generated_tokens": 7
+            }
+          ],
+          "usd": 0.0010515
+        },
+        {
+          "case": "schema_budget",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "ContextBudgetExceeded",
+              "counted_input_tokens": 6627,
+              "api_input_tokens": 0,
+              "api_cached_tokens": 0,
+              "generated_tokens": 0
+            }
+          ],
+          "usd": 0
+        },
+        {
+          "case": "incomplete_usage",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "ModelBehaviorError",
+              "counted_input_tokens": 633,
+              "api_input_tokens": 633,
+              "api_cached_tokens": 0,
+              "generated_tokens": 16
+            }
+          ],
+          "usd": 0.00054675
+        }
+      ],
+      "estimated_usd": 0.00538725,
+      "code_fingerprint": "31ac8ded7ef18a0b2def052d0bfb39e137b60f3c125532084f0e6b941adf33c7",
+      "git_commit": "27730045c934c97d56fe5952b76892405db27147",
+      "environment": {
+        "python": "3.12.12",
+        "openai-agents": "0.24.0",
+        "openai": "3.46.0",
+        "contextbench": "0.1.0",
+        "tiktoken": "0.14.0"
+      }
+    },
+    {
+      "run_id": "20261108-202107-integration",
+      "model": "gpt-5.4-mini",
+      "results": [
+        {
+          "case": "checkpoint_and_structured_tool",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "completed",
+              "counted_input_tokens": 617,
+              "api_input_tokens": 617,
+              "api_cached_tokens": 0,
+              "generated_tokens": 21
+            },
+            {
+              "status": "completed",
+              "counted_input_tokens": 661,
+              "api_input_tokens": 661,
+              "api_cached_tokens": 0,
+              "generated_tokens": 14
+            },
+            {
+              "status": "completed",
+              "counted_input_tokens": 766,
+              "api_input_tokens": 766,
+              "api_cached_tokens": 0,
+              "generated_tokens": 14
+            }
+          ],
+          "usd": 0.0017535
+        },
+        {
+          "case": "terminal_edit",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "completed",
+              "counted_input_tokens": 653,
+              "api_input_tokens": 653,
+              "api_cached_tokens": 0,
+              "generated_tokens": 102
+            }
+          ],
+          "usd": 0.00094875
+        },
+        {
+          "case": "image_tool",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "completed",
+              "counted_input_tokens": 642,
+              "api_input_tokens": 642,
+              "api_cached_tokens": 0,
+              "generated_tokens": 13
+            },
+            {
+              "status": "completed",
+              "counted_input_tokens": 683,
+              "api_input_tokens": 683,
+              "api_cached_tokens": 0,
+              "generated_tokens": 5
+            }
+          ],
+          "usd": 0.00107475
+        },
+        {
+          "case": "assistant_phase",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "completed",
+              "counted_input_tokens": 652,
+              "api_input_tokens": 652,
+              "api_cached_tokens": 0,
+              "generated_tokens": 7
+            },
+            {
+              "status": "completed",
+              "counted_input_tokens": 670,
+              "api_input_tokens": 670,
+              "api_cached_tokens": 0,
+              "generated_tokens": 7
+            }
+          ],
+          "usd": 0.0010544999999999999
+        },
+        {
+          "case": "schema_budget",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "ContextBudgetExceeded",
+              "counted_input_tokens": 6625,
+              "api_input_tokens": 0,
+              "api_cached_tokens": 0,
+              "generated_tokens": 0
+            }
+          ],
+          "usd": 0
+        },
+        {
+          "case": "incomplete_usage",
+          "passed": true,
+          "error": null,
+          "requests": [
+            {
+              "status": "ModelBehaviorError",
+              "counted_input_tokens": 637,
+              "api_input_tokens": 637,
+              "api_cached_tokens": 0,
+              "generated_tokens": 16
+            }
+          ],
+          "usd": 0.00054975
+        }
+      ],
+      "estimated_usd": 0.00538125,
+      "code_fingerprint": "bebf7f26522d4a47b91da5208f6d86138d2dd2bb2404e30f12dd759d4222d8ca",
+      "git_commit": "27730045c934c97d56fe5952b76892405db27147",
+      "environment": {
+        "python": "3.12.12",
+        "openai-agents": "0.24.0",
+        "openai": "3.46.0",
+        "contextbench": "0.1.0",
+        "tiktoken": "0.14.0"
+      }
+    }
+  ],
+  "limitations": [
+    "Superseded summary extraction results are excluded from accuracy comparisons.",
+    "Interrupted runs do not have complete usage accounting; reported costs are not total API spend.",
+    "No validated high-pressure Summary comparison; one earlier run received a provider prompt rejection.",
+    "Pilot tasks have one seed; stress retention has two fresh seeds.",
+    "Docker integration was not exercised."
+  ],
+  "additional_failure_probe": {
+    "case": "failed_compaction_billing",
+    "model": "gpt-5.4-mini",
+    "passed": true,
+    "api_input_tokens": 1387,
+    "generated_tokens": 16,
+    "history_preserved": true
+  },
+  "recorded_completed_results_estimated_usd": 17.487853,
+  "cost_note": "Estimate for saved completed results only. Excludes cancelled in-flight usage and ad hoc probes. Earlier failure-path estimates may undercount; this is not the total API bill."
+}

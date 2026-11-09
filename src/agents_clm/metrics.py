@@ -68,6 +68,36 @@ class ContextTrace:
         self.steps: list[dict[str, Any]] = []
         self.texts: dict[str, str] = {}
         self._seen_prefixes: set[str] = set()
+        self._prefix_additions: list[set[str]] = []
+        self._run_start = 0
+
+    def begin_run(self) -> None:
+        """Remember which requests belong to the next SDK run's usage entries."""
+        self._run_start = len(self.steps)
+
+    def reject_last(self, kind: str) -> bool:
+        """A preflight rejection never populated the model's prefix cache."""
+        if len(self.steps) > self._run_start and self.steps[-1]["kind"] == "turn":
+            self.steps[-1]["kind"] = kind
+            self._seen_prefixes.difference_update(self._prefix_additions[-1])
+            return True
+        return False
+
+    def attach_failure(self, error: Exception) -> None:
+        """Preserve adapter-reported billing even when the SDK discards a response."""
+        if not self.steps or len(self.steps) <= self._run_start:
+            return
+        if getattr(error, "_clm_preflight_failed", False):
+            self.reject_last("preflight_error")
+        usage = getattr(error, "_clm_response_usage", None)
+        if usage is not None:
+            self.steps[-1].update(
+                generated=usage.output_tokens,
+                api_input_tokens=usage.input_tokens,
+                api_cached_tokens=getattr(usage.input_tokens_details, "cached_tokens", 0) or 0,
+                api_reasoning_tokens=getattr(usage.output_tokens_details, "reasoning_tokens", 0) or 0,
+                response_status=getattr(error, "_clm_response_status", "failed"),
+            )
 
     def _intern(self, role: str, text: str) -> tuple[str, int]:
         key = hashlib.sha1(f"{role}\0{text}".encode()).hexdigest()[:16]
@@ -104,8 +134,9 @@ class ContextTrace:
             else:
                 still_matching = False
             new_prefixes.append(digest)
-        if kind != "over_budget":
-            self._seen_prefixes.update(new_prefixes)
+        added = set(new_prefixes) - self._seen_prefixes if kind in ("turn", "compaction") else set()
+        self._prefix_additions.append(added)
+        self._seen_prefixes.update(added)
         self.steps.append(
             {
                 "step": len(self.steps),
@@ -127,12 +158,13 @@ class ContextTrace:
 
     def attach_usage(self, usage: Any) -> None:
         """Replace estimates with provider-reported usage when it lines up one-to-one."""
-        turns = [s for s in self.steps if s["kind"] == "turn"]
+        turns = [s for s in self.steps[self._run_start:] if s["kind"] == "turn"]
         entries = list(getattr(usage, "request_usage_entries", None) or [])
         if not entries or len(entries) > len(turns):
             return
-        # A driver may call the runner repeatedly, so these are the most recent turns.
-        for step, entry in zip(turns[-len(entries) :], entries, strict=True):
+        # A failed final request may have no usage entry. Completed requests belong to
+        # the beginning of this run, not the trailing prompts or a previous run.
+        for step, entry in zip(turns[:len(entries)], entries, strict=True):
             step["generated"] = entry.output_tokens
             step["api_input_tokens"] = entry.input_tokens
             step["api_cached_tokens"] = entry.input_tokens_details.cached_tokens
@@ -141,7 +173,7 @@ class ContextTrace:
     @property
     def last_sent_text(self) -> str:
         for step in reversed(self.steps):
-            if step["kind"] != "over_budget":
+            if step["kind"] in ("turn", "compaction"):
                 return "\n".join(self.texts[m["key"]] for m in step["messages"])
         return ""
 

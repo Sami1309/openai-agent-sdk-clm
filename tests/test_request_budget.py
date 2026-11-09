@@ -4,12 +4,12 @@ import json
 
 import httpx2
 import pytest
-from agents import AgentOutputSchema, ModelSettings, UserError, function_tool
+from agents import AgentOutputSchema, ModelBehaviorError, ModelSettings, UserError, function_tool
 from agents.models.interface import ModelTracing
 from openai import AsyncOpenAI, InternalServerError
 from pydantic import BaseModel
 
-from agents_clm import BudgetedResponsesModel, CLMAgent, CLMRunner, ContextBudgetExceeded, ContextSettings
+from agents_clm import BudgetedResponsesModel, CLMAgent, CLMRunner, ContextBudgetExceeded, ContextSettings, UsageTrackingResponsesModel
 
 
 @function_tool
@@ -22,7 +22,7 @@ class Answer(BaseModel):
     answer: str
 
 
-def make_model(settings, *, count=100, fail_count=False, mutate=None):
+def make_model(settings, *, count=100, fail_count=False, mutate=None, status="completed"):
     requests = []
 
     async def handler(request):
@@ -36,7 +36,7 @@ def make_model(settings, *, count=100, fail_count=False, mutate=None):
             return httpx2.Response(200, json={"object": "response.input_tokens", "input_tokens": count})
         return httpx2.Response(200, json={
             "id": "resp_1", "object": "response", "created_at": 1, "model": "gpt-5.4-mini",
-            "status": "completed", "parallel_tool_calls": False, "tool_choice": "auto", "tools": [],
+            "status": status, "parallel_tool_calls": False, "tool_choice": "auto", "tools": [],
             "output": [{"id": "msg_1", "type": "message", "role": "assistant", "status": "completed",
                         "content": [{"type": "output_text", "text": '{"answer":"ok"}', "annotations": []}]}],
             "usage": {"input_tokens": count, "output_tokens": 8, "total_tokens": count + 8,
@@ -117,6 +117,44 @@ async def test_successful_structured_response_through_real_runner(tmp_path):
     assert len(requests) == 2
     assert requests[0][1]["input"] == requests[1][1]["input"]
     assert agent.live.input_items[-1]["content"] == '{"answer":"ok"}'
+
+
+@pytest.mark.parametrize("status", ["failed", "incomplete"])
+async def test_failed_response_keeps_provider_usage(tmp_path, status):
+    settings = ContextSettings(budget=2000, reserve=200)
+    model, client, requests = make_model(settings, status=status)
+    agent = CLMAgent(name="a", model=model, context_settings=settings, workdir=tmp_path)
+    async with client:
+        with pytest.raises(ModelBehaviorError):
+            await CLMRunner.run(agent, "task", run_config={"tracing_disabled": True})
+    summary = agent.live.trace.summary()
+    assert summary["model_calls"] == 1
+    assert summary["api_input_tokens"] == 100 and summary["generated_tokens"] == 8
+    assert agent.live.trace.steps[-1]["response_status"] == status
+
+
+async def test_count_failure_is_not_a_generated_call_or_cached_prefix(tmp_path):
+    settings = ContextSettings(budget=2000, reserve=200)
+    model, client, requests = make_model(settings, fail_count=True)
+    agent = CLMAgent(name="a", model=model, context_settings=settings, workdir=tmp_path)
+    async with client:
+        with pytest.raises(InternalServerError):
+            await CLMRunner.run(agent, "task", run_config={"tracing_disabled": True})
+    assert agent.live.trace.summary()["model_calls"] == 0
+    assert not agent.live.trace._seen_prefixes
+    assert agent.live.trace.steps[-1]["kind"] == "preflight_error"
+
+
+async def test_usage_only_adapter_preserves_failure_billing_without_count_request(tmp_path):
+    _, client, requests = make_model(ContextSettings(), status="incomplete")
+    model = UsageTrackingResponsesModel("gpt-5.4-mini", client)
+    agent = CLMAgent(name="a", model=model, workdir=tmp_path)
+    async with client:
+        with pytest.raises(ModelBehaviorError):
+            await CLMRunner.run(agent, "task", run_config={"tracing_disabled": True})
+    assert len(requests) == 1 and requests[0][0] == "/v1/responses"
+    assert agent.live.trace.summary()["api_input_tokens"] == 100
+    assert agent.live.trace.summary()["generated_tokens"] == 8
 
 
 @pytest.mark.parametrize("kwargs", [{"prompt": {"id": "p"}}, {"previous_response_id": "r"}, {"conversation_id": "c"}])
